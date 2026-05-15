@@ -3,7 +3,9 @@ package handlers
 
 import (
 	"context"
+	"encoding/csv"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -857,7 +859,25 @@ func (h *ReportHandler) CashClose(c *gin.Context) {
 }
 
 func (h *ReportHandler) ExportSales(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{"message": "CSV export pendiente"})
+	from, to := c.Query("from"), c.Query("to")
+	data, err := h.repo.DailySeries(c.Request.Context(), c.Query("branch_id"), from, to)
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
+	filename := fmt.Sprintf("ventas_%s_%s.csv", from, to)
+	c.Header("Content-Disposition", "attachment; filename="+filename)
+	c.Header("Content-Type", "text/csv; charset=utf-8")
+	w := csv.NewWriter(c.Writer)
+	_ = w.Write([]string{"Fecha", "Órdenes", "Ingresos (MXN)"})
+	for _, s := range data {
+		_ = w.Write([]string{
+			s.Day,
+			strconv.FormatInt(s.Orders, 10),
+			fmt.Sprintf("%.2f", s.Revenue),
+		})
+	}
+	w.Flush()
 }
 
 func (h *ReportHandler) ExportInventory(c *gin.Context) {
@@ -867,7 +887,26 @@ func (h *ReportHandler) ExportInventory(c *gin.Context) {
 		mapErr(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"data": data})
+	c.Header("Content-Disposition", "attachment; filename=inventario.csv")
+	c.Header("Content-Type", "text/csv; charset=utf-8")
+	w := csv.NewWriter(c.Writer)
+	_ = w.Write([]string{"SKU", "Producto", "Sucursal", "Cantidad", "Reservado", "Disponible", "Punto reorden", "Stock bajo", "Precio"})
+	for _, r := range data {
+		low := "No"
+		if r.IsLow {
+			low = "Sí"
+		}
+		_ = w.Write([]string{
+			r.SKU, r.ProductName, r.BranchName,
+			strconv.Itoa(r.Quantity),
+			strconv.Itoa(r.ReservedQty),
+			strconv.Itoa(r.Available),
+			strconv.Itoa(r.ReorderPoint),
+			low,
+			fmt.Sprintf("%.2f", r.Price),
+		})
+	}
+	w.Flush()
 }
 
 // ──── CouponHandler ───────────────────────────────────────

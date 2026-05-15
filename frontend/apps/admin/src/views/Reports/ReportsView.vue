@@ -11,6 +11,12 @@
         <input v-model="to"   type="date" class="date-input" @change="loadAll()" />
         <button class="btn-outline" @click="setToday()">Hoy</button>
         <button class="btn-outline" @click="setMonth()">Este mes</button>
+        <button class="btn-export" :disabled="exporting" @click="exportSales()">
+          {{ exporting ? 'Descargando…' : '⬇ Ventas CSV' }}
+        </button>
+        <button class="btn-export" :disabled="exporting" @click="exportInventory()">
+          {{ exporting ? 'Descargando…' : '⬇ Inventario CSV' }}
+        </button>
       </div>
     </div>
 
@@ -91,9 +97,10 @@
 import { ref, computed, onMounted } from 'vue'
 import { api } from '../../api/client'
 
-const from = ref('')
-const to   = ref('')
-const loading = ref(false)
+const from     = ref('')
+const to       = ref('')
+const loading  = ref(false)
+const exporting = ref(false)
 const revenue  = ref<any>({ gmv:0, orders:0, aov:0, customers:0 })
 const byBranch = ref<any[]>([])
 const topProds = ref<any[]>([])
@@ -137,6 +144,30 @@ async function loadAll() {
 const fmt  = (n: number) => (n ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })
 const fmtK = (n: number) => n >= 1000 ? `${(n/1000).toFixed(1)}k` : String(Math.round(n))
 
+async function downloadCSV(url: string, filename: string) {
+  exporting.value = true
+  try {
+    const res = await api.get(url, { responseType: 'blob' })
+    const href = URL.createObjectURL(res.data)
+    const a = document.createElement('a')
+    a.href = href; a.download = filename; a.click()
+    URL.revokeObjectURL(href)
+  } catch (e) { console.error('[export]', e) }
+  finally { exporting.value = false }
+}
+
+function exportSales() {
+  const p = new URLSearchParams()
+  if (from.value) p.set('from', from.value)
+  if (to.value)   p.set('to',   to.value)
+  const qs = p.toString() ? '?' + p : ''
+  downloadCSV(`/admin/reports/export/sales${qs}`, `ventas_${from.value}_${to.value}.csv`)
+}
+
+function exportInventory() {
+  downloadCSV('/admin/reports/export/inventory', 'inventario.csv')
+}
+
 onMounted(() => { setMonth() })
 </script>
 
@@ -149,6 +180,9 @@ onMounted(() => { setMonth() })
 .date-input   { background:#1c2333; border:1px solid #2d3a52; color:#d6dfe8; padding:8px 10px; border-radius:7px; font-size:13px; }
 .date-sep     { color:#5a6a87; }
 .btn-outline  { background:none; border:1px solid #38bdf8; color:#38bdf8; padding:8px 14px; border-radius:7px; font-size:12px; cursor:pointer; }
+.btn-export   { background:rgba(56,189,248,.1); border:1px solid rgba(56,189,248,.4); color:#38bdf8; padding:8px 14px; border-radius:7px; font-size:12px; cursor:pointer; transition:all .15s; }
+.btn-export:hover:not(:disabled)  { background:rgba(56,189,248,.2); }
+.btn-export:disabled { opacity:.5; cursor:not-allowed; }
 
 .kpi-grid    { display:grid; grid-template-columns:repeat(auto-fill, minmax(180px,1fr)); gap:14px; }
 .kpi-card    { background:#1c2333; border:1px solid #2d3a52; border-radius:10px; padding:20px; }
