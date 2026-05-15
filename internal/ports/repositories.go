@@ -70,6 +70,10 @@ type ProductRepository interface {
 	SetBranchPrice(ctx context.Context, op domain.OverridePrice) error
 	BulkUpsert(ctx context.Context, products []*domain.Product) (int, error)
 	ListCategories(ctx context.Context) ([]domain.Category, error)
+	GetCategory(ctx context.Context, id string) (*domain.Category, error)
+	CreateCategory(ctx context.Context, c *domain.Category) (*domain.Category, error)
+	UpdateCategory(ctx context.Context, c *domain.Category) (*domain.Category, error)
+	SetCategoryActive(ctx context.Context, id string, active bool) error
 }
 
 type InventoryRepository interface {

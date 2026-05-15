@@ -417,7 +417,84 @@ func (h *ProductHandler) ListCategories(c *gin.Context) {
 }
 
 func (h *ProductHandler) CreateCategory(c *gin.Context) {
-	apiErr(c, http.StatusNotImplemented, "NOT_IMPLEMENTED", "usar migración directa de categorías")
+	var body struct {
+		Name        string  `json:"name" binding:"required"`
+		Slug        string  `json:"slug"`
+		Description string  `json:"description"`
+		ParentID    *string `json:"parent_id"`
+		SortOrder   int     `json:"sort_order"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		apiErr(c, http.StatusBadRequest, "BAD_REQUEST", err.Error())
+		return
+	}
+	slug := body.Slug
+	if slug == "" {
+		slug = strings.ToLower(strings.ReplaceAll(body.Name, " ", "-"))
+	}
+	cat := &domain.Category{
+		Name:        body.Name,
+		Slug:        slug,
+		Description: body.Description,
+		ParentID:    body.ParentID,
+		SortOrder:   body.SortOrder,
+		IsActive:    true,
+	}
+	created, err := h.repo.CreateCategory(c.Request.Context(), cat)
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
+	c.JSON(http.StatusCreated, created)
+}
+
+func (h *ProductHandler) UpdateCategory(c *gin.Context) {
+	id := c.Param("id")
+	var body struct {
+		Name        string  `json:"name" binding:"required"`
+		Slug        string  `json:"slug"`
+		Description string  `json:"description"`
+		ParentID    *string `json:"parent_id"`
+		SortOrder   int     `json:"sort_order"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		apiErr(c, http.StatusBadRequest, "BAD_REQUEST", err.Error())
+		return
+	}
+	slug := body.Slug
+	if slug == "" {
+		slug = strings.ToLower(strings.ReplaceAll(body.Name, " ", "-"))
+	}
+	cat := &domain.Category{
+		ID:          id,
+		Name:        body.Name,
+		Slug:        slug,
+		Description: body.Description,
+		ParentID:    body.ParentID,
+		SortOrder:   body.SortOrder,
+	}
+	updated, err := h.repo.UpdateCategory(c.Request.Context(), cat)
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, updated)
+}
+
+func (h *ProductHandler) SetCategoryActive(c *gin.Context) {
+	id := c.Param("id")
+	var body struct {
+		Active bool `json:"active"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		apiErr(c, http.StatusBadRequest, "BAD_REQUEST", err.Error())
+		return
+	}
+	if err := h.repo.SetCategoryActive(c.Request.Context(), id, body.Active); err != nil {
+		mapErr(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
 // ──── InventoryHandler ─────────────────────────────────────

@@ -40,11 +40,15 @@ type OverridePrice struct {
 }
 
 type Category struct {
-	ID       string     `json:"id"`
-	Name     string     `json:"name"`
-	Slug     string     `json:"slug"`
-	ParentID *string    `json:"parent_id,omitempty"`
-	Children []Category `json:"children,omitempty"`
+	ID           string     `json:"id"`
+	Name         string     `json:"name"`
+	Slug         string     `json:"slug"`
+	Description  string     `json:"description,omitempty"`
+	ParentID     *string    `json:"parent_id,omitempty"`
+	SortOrder    int        `json:"sort_order"`
+	IsActive     bool       `json:"is_active"`
+	ProductCount int        `json:"product_count,omitempty"`
+	Children     []Category `json:"children,omitempty"`
 }
 
 type ProductFilter struct {

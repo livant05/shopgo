@@ -95,6 +95,8 @@ func Setup(r *gin.Engine, d *Deps) {
 		adm.PUT("/products/:id/price", d.Product.SetBranchPrice)
 		adm.POST("/products/bulk", d.Product.BulkImport)
 		adm.POST("/categories", d.Product.CreateCategory)
+		adm.PUT("/categories/:id", d.Product.UpdateCategory)
+		adm.PATCH("/categories/:id/active", d.Product.SetCategoryActive)
 
 		// Inventario total
 		adm.GET("/inventory", d.Inventory.ListAll)

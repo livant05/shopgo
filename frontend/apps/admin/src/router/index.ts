@@ -21,6 +21,7 @@ export const router = createRouter({
         { path: 'branches',  name: 'Branches',  component: () => import('../views/Branches/BranchListView.vue'), meta: { minRole: 'admin' } },
         { path: 'users',     name: 'Users',     component: () => import('../views/Users/UsersView.vue'),         meta: { minRole: 'admin' } },
         { path: 'reports',   name: 'Reports',   component: () => import('../views/Reports/ReportsView.vue'),     meta: { minRole: 'admin' } },
+        { path: 'categories', name: 'Categories', component: () => import('../views/Categories/CategoriesView.vue'), meta: { minRole: 'admin' } },
         { path: 'coupons',   name: 'Coupons',   component: () => import('../views/Coupons/CouponsView.vue'),     meta: { minRole: 'admin' } },
         { path: 'settings',  name: 'Settings',  component: () => import('../views/Settings/SettingsView.vue'),   meta: { minRole: 'admin' } },
       ],

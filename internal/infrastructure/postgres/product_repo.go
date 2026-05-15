@@ -245,9 +245,29 @@ func (r *ProductRepo) BulkUpsert(ctx context.Context, products []*domain.Product
 	return count, nil
 }
 
+const catCols = `c.id, c.name, c.slug, c.parent_id,
+	COALESCE(c.description,''), COALESCE(c.sort_order,0), COALESCE(c.is_active,true),
+	COUNT(p.id)`
+
+func (r *ProductRepo) scanCategory(row rowScanner) (*domain.Category, error) {
+	var c domain.Category
+	if err := row.Scan(
+		&c.ID, &c.Name, &c.Slug, &c.ParentID,
+		&c.Description, &c.SortOrder, &c.IsActive, &c.ProductCount,
+	); err != nil {
+		return nil, err
+	}
+	c.Children = []domain.Category{}
+	return &c, nil
+}
+
 func (r *ProductRepo) ListCategories(ctx context.Context) ([]domain.Category, error) {
-	rows, err := r.db.Query(ctx,
-		`SELECT id, name, slug, parent_id FROM categories ORDER BY name`)
+	rows, err := r.db.Query(ctx, `
+		SELECT `+catCols+`
+		FROM categories c
+		LEFT JOIN products p ON p.category_id = c.id AND p.is_active = true
+		GROUP BY c.id
+		ORDER BY c.sort_order, c.name`)
 	if err != nil {
 		return nil, err
 	}
@@ -256,26 +276,63 @@ func (r *ProductRepo) ListCategories(ctx context.Context) ([]domain.Category, er
 	all := map[string]*domain.Category{}
 	order := []string{}
 	for rows.Next() {
-		var c domain.Category
-		var parentID *string
-		if err := rows.Scan(&c.ID, &c.Name, &c.Slug, &parentID); err != nil {
+		c, err := r.scanCategory(rows)
+		if err != nil {
 			return nil, err
 		}
-		c.ParentID = parentID
-		c.Children = []domain.Category{}
-		all[c.ID] = &c
+		all[c.ID] = c
 		order = append(order, c.ID)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
-
-	// Build flat list (tree building optional)
 	result := make([]domain.Category, 0, len(order))
 	for _, id := range order {
 		result = append(result, *all[id])
 	}
 	return result, nil
+}
+
+func (r *ProductRepo) GetCategory(ctx context.Context, id string) (*domain.Category, error) {
+	return r.scanCategory(r.db.QueryRow(ctx, `
+		SELECT `+catCols+`
+		FROM categories c
+		LEFT JOIN products p ON p.category_id = c.id AND p.is_active = true
+		WHERE c.id=$1
+		GROUP BY c.id`, id))
+}
+
+func (r *ProductRepo) CreateCategory(ctx context.Context, c *domain.Category) (*domain.Category, error) {
+	var parentID *string
+	if c.ParentID != nil && *c.ParentID != "" {
+		parentID = c.ParentID
+	}
+	return r.scanCategory(r.db.QueryRow(ctx, `
+		INSERT INTO categories (name, slug, parent_id, description, sort_order)
+		VALUES ($1,$2,$3,$4,$5)
+		RETURNING id, name, slug, parent_id,
+		          COALESCE(description,''), COALESCE(sort_order,0), COALESCE(is_active,true), 0`,
+		c.Name, c.Slug, parentID, c.Description, c.SortOrder))
+}
+
+func (r *ProductRepo) UpdateCategory(ctx context.Context, c *domain.Category) (*domain.Category, error) {
+	var parentID *string
+	if c.ParentID != nil && *c.ParentID != "" {
+		parentID = c.ParentID
+	}
+	return r.scanCategory(r.db.QueryRow(ctx, `
+		UPDATE categories
+		SET name=$2, slug=$3, parent_id=$4, description=$5, sort_order=$6
+		WHERE id=$1
+		RETURNING id, name, slug, parent_id,
+		          COALESCE(description,''), COALESCE(sort_order,0), COALESCE(is_active,true), 0`,
+		c.ID, c.Name, c.Slug, parentID, c.Description, c.SortOrder))
+}
+
+func (r *ProductRepo) SetCategoryActive(ctx context.Context, id string, active bool) error {
+	_, err := r.db.Exec(ctx,
+		`UPDATE categories SET is_active=$2 WHERE id=$1`, id, active)
+	return err
 }
 
 func (r *ProductRepo) scanProduct(row rowScanner) (*domain.Product, error) {
