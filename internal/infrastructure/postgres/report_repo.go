@@ -99,7 +99,7 @@ func (r *ReportRepo) TopProducts(ctx context.Context, branchID, from, to string,
 func (r *ReportRepo) DailySeries(ctx context.Context, branchID, from, to string) ([]*ports.DailyStat, error) {
 	rows, err := r.db.Query(ctx, `
 		SELECT
-		  DATE(created_at) AS day,
+		  DATE(created_at)::text AS day,
 		  COUNT(*) AS orders,
 		  COALESCE(SUM(total), 0) AS revenue
 		FROM orders
