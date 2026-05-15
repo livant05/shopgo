@@ -7,6 +7,12 @@
         <button @click="collapsed = !collapsed" class="sb-toggle">{{ collapsed ? '→' : '←' }}</button>
       </div>
 
+      <button class="sb-search" @click="cmdPalette.show()" :title="collapsed ? 'Buscar (⌘K)' : ''">
+        <span class="sb-icon">🔍</span>
+        <span v-if="!collapsed" class="sb-search-label">Buscar…</span>
+        <kbd v-if="!collapsed" class="sb-search-kbd">⌘K</kbd>
+      </button>
+
       <nav class="sb-nav">
         <router-link v-for="item in navItems" :key="item.to" :to="item.to"
           class="sb-link" :class="{ 'sb-link-hidden': !auth.hasRole(item.minRole) }">
@@ -33,6 +39,9 @@
       </router-view>
     </main>
 
+    <!-- Command Palette -->
+    <CommandPalette />
+
     <!-- Notification toasts -->
     <div class="toast-stack">
       <TransitionGroup name="toast">
@@ -54,6 +63,8 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useNotifications } from '../composables/useNotifications'
+import { useCommandPalette } from '../composables/useCommandPalette'
+import CommandPalette from '../components/CommandPalette.vue'
 
 const auth      = useAuthStore()
 const router    = useRouter()
@@ -61,6 +72,7 @@ const collapsed = ref(false)
 const storeName = import.meta.env.VITE_STORE_NAME ?? 'Mi Tienda'
 
 const { notifications, connect, dismiss } = useNotifications()
+const cmdPalette = useCommandPalette()
 
 onMounted(() => {
   if (auth.hasRole('admin')) connect()
@@ -87,7 +99,11 @@ const navItems = [
 .sb-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 12px; border-bottom: 1px solid #253047; min-height: 56px; }
 .sb-logo { font-size: 14px; font-weight: 700; color: #38bdf8; white-space: nowrap; overflow: hidden; }
 .sb-toggle { background: none; border: 1px solid #253047; color: #5a7298; border-radius: 5px; width: 26px; height: 26px; cursor: pointer; font-size: 11px; flex-shrink: 0; }
-.sb-nav { flex: 1; padding: 12px 8px; display: flex; flex-direction: column; gap: 3px; overflow-y: auto; }
+.sb-search { display:flex; align-items:center; gap:8px; margin:8px; padding:8px 10px; background:#0f1623; border:1px solid #253047; border-radius:7px; cursor:pointer; color:#5a6a87; font-size:13px; transition:all .15s; }
+.sb-search:hover { border-color:#38bdf8; color:#38bdf8; }
+.sb-search-label { flex:1; text-align:left; }
+.sb-search-kbd { background:#253047; border:1px solid #344762; border-radius:4px; padding:1px 5px; font-size:10px; color:#8494ac; }
+.sb-nav { flex: 1; padding: 8px 8px; display: flex; flex-direction: column; gap: 3px; overflow-y: auto; }
 .sb-link { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 7px; text-decoration: none; color: #5a7298; font-size: 13px; transition: all .15s; white-space: nowrap; }
 .sb-link:hover, .sb-link.router-link-active { background: rgba(56,189,248,.08); color: #38bdf8; }
 .sb-link.router-link-exact-active { background: rgba(56,189,248,.12); color: #38bdf8; }
