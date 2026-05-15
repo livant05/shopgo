@@ -158,7 +158,7 @@ func (r *InventoryRepo) Reserve(ctx context.Context, branchID string, items []po
 
 	reservationID := uuid.New().String()
 	data := reservationData{BranchID: branchID, Items: items}
-	r.cache.Set(ctx, fmt.Sprintf("reservation:%s", reservationID), data, int((30*time.Minute).Seconds()))
+	r.cache.Set(ctx, fmt.Sprintf("reservation:%s", reservationID), data, int((30 * time.Minute).Seconds()))
 	return reservationID, nil
 }
 

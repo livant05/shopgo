@@ -77,19 +77,19 @@ func main() {
 	}
 
 	// ── Repositorios ──────────────────────────────────────
-	branchRepo    := postgres.NewBranchRepo(pool)
-	userRepo      := postgres.NewUserRepo(pool)
-	productRepo   := postgres.NewProductRepo(pool)
+	branchRepo := postgres.NewBranchRepo(pool)
+	userRepo := postgres.NewUserRepo(pool)
+	productRepo := postgres.NewProductRepo(pool)
 	inventoryRepo := postgres.NewInventoryRepo(pool, redisClient)
-	orderRepo     := postgres.NewOrderRepo(pool)
-	storeRepo     := postgres.NewStoreRepo(pool)
-	couponRepo    := postgres.NewCouponRepo(pool)
-	reportRepo    := postgres.NewReportRepo(pool)
+	orderRepo := postgres.NewOrderRepo(pool)
+	storeRepo := postgres.NewStoreRepo(pool)
+	couponRepo := postgres.NewCouponRepo(pool)
+	reportRepo := postgres.NewReportRepo(pool)
 
 	// ── Servicios ────────────────────────────────────────
-	authSvc  := services.NewAuthService(userRepo, redisClient, privKey, pubKey, cfg.JWTAccessTTL, cfg.JWTRefreshTTL)
+	authSvc := services.NewAuthService(userRepo, redisClient, privKey, pubKey, cfg.JWTAccessTTL, cfg.JWTRefreshTTL)
 	orderSvc := services.NewOrderService(orderRepo, inventoryRepo, productRepo, branchRepo, redisClient)
-	paySvc   := stripesvc.NewPaymentService(cfg.StripeSecretKey, cfg.StripeWebhookSecret, orderRepo)
+	paySvc := stripesvc.NewPaymentService(cfg.StripeSecretKey, cfg.StripeWebhookSecret, orderRepo)
 
 	// ── Handlers y router ────────────────────────────────
 	r := gin.New()

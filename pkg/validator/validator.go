@@ -2,9 +2,9 @@ package validator
 
 import (
 	"fmt"
-	"strings"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
+	"strings"
 )
 
 type ValidationErr struct {
@@ -28,17 +28,24 @@ func fromErr(err error) ValidationErr {
 			fields[strings.ToLower(fe.Field())] = msg(fe)
 		}
 	}
-	return ValidationErr{Code:"VALIDATION_ERROR", Msg:"datos inválidos", Fields:fields}
+	return ValidationErr{Code: "VALIDATION_ERROR", Msg: "datos inválidos", Fields: fields}
 }
 
 func msg(fe validator.FieldError) string {
 	switch fe.Tag() {
-	case "required": return "requerido"
-	case "email":    return "email inválido"
-	case "min":      return fmt.Sprintf("mínimo %s", fe.Param())
-	case "max":      return fmt.Sprintf("máximo %s", fe.Param())
-	case "uuid":     return "UUID inválido"
-	case "oneof":    return fmt.Sprintf("debe ser: %s", fe.Param())
-	default:         return fmt.Sprintf("falla '%s'", fe.Tag())
+	case "required":
+		return "requerido"
+	case "email":
+		return "email inválido"
+	case "min":
+		return fmt.Sprintf("mínimo %s", fe.Param())
+	case "max":
+		return fmt.Sprintf("máximo %s", fe.Param())
+	case "uuid":
+		return "UUID inválido"
+	case "oneof":
+		return fmt.Sprintf("debe ser: %s", fe.Param())
+	default:
+		return fmt.Sprintf("falla '%s'", fe.Tag())
 	}
 }

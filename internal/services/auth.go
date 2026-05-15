@@ -9,9 +9,9 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/pquerna/otp/totp"
-	"golang.org/x/crypto/bcrypt"
 	"github.com/yourorg/shopgo/internal/domain"
 	"github.com/yourorg/shopgo/internal/ports"
+	"golang.org/x/crypto/bcrypt"
 )
 
 var (

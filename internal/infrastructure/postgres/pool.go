@@ -17,11 +17,11 @@ func NewPool(ctx context.Context, dsn string, maxConns, minConns int32) (*pgxpoo
 		return nil, fmt.Errorf("parsear DSN: %w", err)
 	}
 
-	cfg.MaxConns              = maxConns
-	cfg.MinConns              = minConns
-	cfg.MaxConnLifetime       = 30 * time.Minute
-	cfg.MaxConnIdleTime       = 5 * time.Minute
-	cfg.HealthCheckPeriod     = 1 * time.Minute
+	cfg.MaxConns = maxConns
+	cfg.MinConns = minConns
+	cfg.MaxConnLifetime = 30 * time.Minute
+	cfg.MaxConnIdleTime = 5 * time.Minute
+	cfg.HealthCheckPeriod = 1 * time.Minute
 
 	pool, err := pgxpool.NewWithConfig(ctx, cfg)
 	if err != nil {

@@ -31,13 +31,17 @@ func (c *Client) Ping(ctx context.Context) error { return c.rdb.Ping(ctx).Err() 
 
 func (c *Client) Get(ctx context.Context, key string, dest any) error {
 	data, err := c.rdb.Get(ctx, key).Bytes()
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	return json.Unmarshal(data, dest)
 }
 
 func (c *Client) Set(ctx context.Context, key string, val any, ttlSec int) error {
 	data, err := json.Marshal(val)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	return c.rdb.Set(ctx, key, data, time.Duration(ttlSec)*time.Second).Err()
 }
 
@@ -45,13 +49,17 @@ func (c *Client) Delete(ctx context.Context, key string) error { return c.rdb.De
 
 func (c *Client) Invalidate(ctx context.Context, pattern string) error {
 	iter := c.rdb.Scan(ctx, 0, pattern, 100).Iterator()
-	for iter.Next(ctx) { c.rdb.Del(ctx, iter.Val()) }
+	for iter.Next(ctx) {
+		c.rdb.Del(ctx, iter.Val())
+	}
 	return iter.Err()
 }
 
 func (c *Client) Publish(ctx context.Context, ch string, payload any) error {
 	data, err := json.Marshal(payload)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	return c.rdb.Publish(ctx, ch, data).Err()
 }
 

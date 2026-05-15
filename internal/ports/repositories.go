@@ -108,10 +108,10 @@ type ReportRepository interface {
 }
 
 type RevenueMetrics struct {
-	GMV         float64 `json:"gmv"`
-	Orders      int64   `json:"orders"`
-	AOV         float64 `json:"aov"`
-	Customers   int64   `json:"customers"`
+	GMV       float64 `json:"gmv"`
+	Orders    int64   `json:"orders"`
+	AOV       float64 `json:"aov"`
+	Customers int64   `json:"customers"`
 }
 
 type BranchSales struct {

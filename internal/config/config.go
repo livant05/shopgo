@@ -26,8 +26,8 @@ type Config struct {
 	JWTAccessTTL      time.Duration
 	JWTRefreshTTL     time.Duration
 
-	StripeSecretKey     string
-	StripeWebhookSecret string
+	StripeSecretKey      string
+	StripeWebhookSecret  string
 	StripePublishableKey string
 
 	S3Endpoint  string
@@ -36,9 +36,9 @@ type Config struct {
 	S3AccessKey string
 	S3SecretKey string
 
-	ResendAPIKey       string
-	EmailFrom          string
-	StoreAdminEmail    string
+	ResendAPIKey    string
+	EmailFrom       string
+	StoreAdminEmail string
 
 	AllowedOrigins []string
 	AdminIPs       []string

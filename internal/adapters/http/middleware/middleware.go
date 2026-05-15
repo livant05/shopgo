@@ -33,11 +33,11 @@ func Logger() gin.HandlerFunc {
 		c.Next()
 
 		slog.Info("req",
-			"method",     c.Request.Method,
-			"path",       c.Request.URL.Path,
-			"status",     c.Writer.Status(),
+			"method", c.Request.Method,
+			"path", c.Request.URL.Path,
+			"status", c.Writer.Status(),
 			"latency_ms", time.Since(start).Milliseconds(),
-			"ip",         c.ClientIP(),
+			"ip", c.ClientIP(),
 			"request_id", rid,
 		)
 	}
@@ -87,7 +87,7 @@ func JWT(pubKey any) gin.HandlerFunc {
 			return
 		}
 
-		c.Set("user_id",   claims.UserID)
+		c.Set("user_id", claims.UserID)
 		c.Set("user_role", claims.Role)
 		c.Set("branch_id", claims.BranchID)
 		c.Next()
@@ -115,7 +115,7 @@ func RequireRole(min string) gin.HandlerFunc {
 // Los admin/manager pueden operar en cualquier sucursal.
 func BranchScope() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		role     := c.GetString("user_role")
+		role := c.GetString("user_role")
 		branchID := c.GetString("branch_id")
 
 		// Admins ven todo — no limitar

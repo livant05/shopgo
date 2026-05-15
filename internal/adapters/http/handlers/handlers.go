@@ -452,8 +452,8 @@ func (h *InventoryHandler) History(c *gin.Context) {
 // ──── OrderHandler ─────────────────────────────────────────
 
 type OrderHandler struct {
-	svc   *services.OrderService
-	repo  ports.OrderRepository
+	svc  *services.OrderService
+	repo ports.OrderRepository
 }
 
 func NewOrderHandler(svc *services.OrderService, repo ports.OrderRepository) *OrderHandler {

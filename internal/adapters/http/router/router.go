@@ -28,22 +28,22 @@ func Setup(r *gin.Engine, d *Deps) {
 
 	// ── Infraestructura ─────────────────────────────
 	r.GET("/health", d.Health.Live)
-	r.GET("/ready",  d.Health.Ready)
+	r.GET("/ready", d.Health.Ready)
 
 	api := r.Group("/api/v1")
 
 	// ── Públicas (sin auth) ──────────────────────────
 	pub := api.Group("")
 	{
-		pub.POST("/auth/login",    d.Auth.Login)
+		pub.POST("/auth/login", d.Auth.Login)
 		pub.POST("/auth/register", d.Auth.Register)
-		pub.POST("/auth/refresh",  d.Auth.Refresh)
+		pub.POST("/auth/refresh", d.Auth.Refresh)
 
-		pub.GET("/products",     d.Product.List)
+		pub.GET("/products", d.Product.List)
 		pub.GET("/products/:id", d.Product.Get)
-		pub.GET("/categories",   d.Product.ListCategories)
-		pub.GET("/branches",     d.Branch.List)
-		pub.GET("/store",        d.Store.GetConfig)
+		pub.GET("/categories", d.Product.ListCategories)
+		pub.GET("/branches", d.Branch.List)
+		pub.GET("/store", d.Store.GetConfig)
 
 		pub.POST("/webhooks/stripe", d.Payment.Webhook)
 	}
@@ -52,74 +52,74 @@ func Setup(r *gin.Engine, d *Deps) {
 	mw := middleware.JWT(d.PubKey)
 	auth := api.Group("", mw)
 	{
-		auth.GET("/auth/me",            d.Auth.Me)
-		auth.POST("/orders",           middleware.RequireRole("customer"), d.Order.Create)
-		auth.GET("/orders/:id",        middleware.RequireRole("customer"), d.Order.Get)
-		auth.GET("/orders",            middleware.RequireRole("customer"), d.Order.List)
-		auth.POST("/payments/intent",  middleware.RequireRole("customer"), d.Payment.CreateIntent)
+		auth.GET("/auth/me", d.Auth.Me)
+		auth.POST("/orders", middleware.RequireRole("customer"), d.Order.Create)
+		auth.GET("/orders/:id", middleware.RequireRole("customer"), d.Order.Get)
+		auth.GET("/orders", middleware.RequireRole("customer"), d.Order.List)
+		auth.POST("/payments/intent", middleware.RequireRole("customer"), d.Payment.CreateIntent)
 		auth.POST("/coupons/validate", middleware.RequireRole("customer"), d.Payment.ValidateCoupon)
-		auth.POST("/auth/setup-mfa",   d.Auth.SetupMFA)
+		auth.POST("/auth/setup-mfa", d.Auth.SetupMFA)
 	}
 
 	// ── Staff — operaciones de sucursal ──────────────
 	staff := api.Group("/ops", mw, middleware.RequireRole("staff"), middleware.BranchScope())
 	{
-		staff.GET("/orders",               d.Order.ListBranch)
-		staff.PATCH("/orders/:id/status",  d.Order.UpdateStatus)
-		staff.GET("/inventory",            d.Inventory.List)
-		staff.GET("/inventory/alerts",     d.Inventory.LowStockAlerts)
-		staff.GET("/reports/daily",        d.Report.Daily)
-		staff.GET("/reports/cashclose",    d.Report.CashClose)
+		staff.GET("/orders", d.Order.ListBranch)
+		staff.PATCH("/orders/:id/status", d.Order.UpdateStatus)
+		staff.GET("/inventory", d.Inventory.List)
+		staff.GET("/inventory/alerts", d.Inventory.LowStockAlerts)
+		staff.GET("/reports/daily", d.Report.Daily)
+		staff.GET("/reports/cashclose", d.Report.CashClose)
 	}
 
 	// ── Manager — su sucursal + inventario ───────────
 	mgr := api.Group("/mgr", mw, middleware.RequireRole("manager"), middleware.BranchScope())
 	{
-		mgr.PATCH("/inventory",         d.Inventory.Adjust)
+		mgr.PATCH("/inventory", d.Inventory.Adjust)
 		mgr.POST("/inventory/transfer", d.Inventory.Transfer)
-		mgr.GET("/inventory/history",   d.Inventory.History)
+		mgr.GET("/inventory/history", d.Inventory.History)
 	}
 
 	// ── Admin — acceso total ──────────────────────────
 	adm := api.Group("/admin", mw, middleware.RequireRole("admin"), middleware.IPWhitelist(d.AdminIPs))
 	{
 		// Productos
-		adm.POST("/products",              d.Product.Create)
-		adm.PUT("/products/:id",           d.Product.Update)
-		adm.PATCH("/products/:id/active",  d.Product.SetActive)
-		adm.PUT("/products/:id/price",     d.Product.SetBranchPrice)
-		adm.POST("/products/bulk",         d.Product.BulkImport)
-		adm.POST("/categories",            d.Product.CreateCategory)
+		adm.POST("/products", d.Product.Create)
+		adm.PUT("/products/:id", d.Product.Update)
+		adm.PATCH("/products/:id/active", d.Product.SetActive)
+		adm.PUT("/products/:id/price", d.Product.SetBranchPrice)
+		adm.POST("/products/bulk", d.Product.BulkImport)
+		adm.POST("/categories", d.Product.CreateCategory)
 
 		// Inventario total
-		adm.GET("/inventory",              d.Inventory.ListAll)
-		adm.PATCH("/inventory",            d.Inventory.Adjust)
-		adm.POST("/inventory/transfer",    d.Inventory.Transfer)
+		adm.GET("/inventory", d.Inventory.ListAll)
+		adm.PATCH("/inventory", d.Inventory.Adjust)
+		adm.POST("/inventory/transfer", d.Inventory.Transfer)
 
 		// Sucursales
-		adm.GET("/branches",               d.Branch.List)
-		adm.POST("/branches",              d.Branch.Create)
-		adm.PUT("/branches/:id",           d.Branch.Update)
-		adm.PATCH("/branches/:id/active",  d.Branch.SetActive)
+		adm.GET("/branches", d.Branch.List)
+		adm.POST("/branches", d.Branch.Create)
+		adm.PUT("/branches/:id", d.Branch.Update)
+		adm.PATCH("/branches/:id/active", d.Branch.SetActive)
 
 		// Usuarios
-		adm.GET("/users",                  d.Branch.ListUsers)
-		adm.POST("/users",                 d.Branch.CreateUser)
-		adm.PUT("/users/:id",              d.Branch.UpdateUser)
-		adm.PATCH("/users/:id/active",     d.Branch.SetUserActive)
+		adm.GET("/users", d.Branch.ListUsers)
+		adm.POST("/users", d.Branch.CreateUser)
+		adm.PUT("/users/:id", d.Branch.UpdateUser)
+		adm.PATCH("/users/:id/active", d.Branch.SetUserActive)
 
 		// Reportes
-		adm.GET("/reports/dashboard",      d.Report.Dashboard)
-		adm.GET("/reports/sales",          d.Report.Sales)
-		adm.GET("/reports/products",       d.Report.TopProducts)
-		adm.GET("/reports/branches",       d.Report.ByBranch)
-		adm.GET("/reports/export/sales",   d.Report.ExportSales)
+		adm.GET("/reports/dashboard", d.Report.Dashboard)
+		adm.GET("/reports/sales", d.Report.Sales)
+		adm.GET("/reports/products", d.Report.TopProducts)
+		adm.GET("/reports/branches", d.Report.ByBranch)
+		adm.GET("/reports/export/sales", d.Report.ExportSales)
 		adm.GET("/reports/export/inventory", d.Report.ExportInventory)
 
 		// Configuración de la tienda
-		adm.GET("/store",                  d.Store.GetConfig)
-		adm.PUT("/store",                  d.Store.UpdateConfig)
-		adm.GET("/store/payment",          d.Payment.GetConfig)
-		adm.PUT("/store/payment",          d.Payment.UpdateConfig)
+		adm.GET("/store", d.Store.GetConfig)
+		adm.PUT("/store", d.Store.UpdateConfig)
+		adm.GET("/store/payment", d.Payment.GetConfig)
+		adm.PUT("/store/payment", d.Payment.UpdateConfig)
 	}
 }
