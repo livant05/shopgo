@@ -96,6 +96,68 @@ func (r *ReportRepo) TopProducts(ctx context.Context, branchID, from, to string,
 	return list, rows.Err()
 }
 
+func (r *ReportRepo) TopCustomers(ctx context.Context, from, to string, n int) ([]*ports.TopCustomer, error) {
+	if n <= 0 {
+		n = 10
+	}
+	rows, err := r.db.Query(ctx, `
+		SELECT o.customer_id,
+		       COALESCE(u.email, ''),
+		       COALESCE(u.first_name || ' ' || u.last_name, ''),
+		       COUNT(*) AS orders,
+		       COALESCE(SUM(o.total), 0) AS revenue
+		FROM orders o
+		LEFT JOIN users u ON u.id = o.customer_id
+		WHERE o.status NOT IN ('cancelled','refunded')
+		  AND ($1 = '' OR o.created_at >= $1::timestamptz)
+		  AND ($2 = '' OR o.created_at <= $2::timestamptz)
+		GROUP BY o.customer_id, u.email, u.first_name, u.last_name
+		ORDER BY revenue DESC
+		LIMIT $3`, from, to, n)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	list := make([]*ports.TopCustomer, 0)
+	for rows.Next() {
+		var c ports.TopCustomer
+		if err := rows.Scan(&c.CustomerID, &c.Email, &c.FullName, &c.Orders, &c.Revenue); err != nil {
+			return nil, err
+		}
+		list = append(list, &c)
+	}
+	return list, rows.Err()
+}
+
+func (r *ReportRepo) HourlySeries(ctx context.Context, branchID, from, to string) ([]*ports.HourlyStat, error) {
+	rows, err := r.db.Query(ctx, `
+		SELECT EXTRACT(HOUR FROM created_at)::int AS hour,
+		       COUNT(*) AS orders,
+		       COALESCE(SUM(total), 0) AS revenue
+		FROM orders
+		WHERE status NOT IN ('cancelled','refunded')
+		  AND ($1 = '' OR branch_id = $1)
+		  AND ($2 = '' OR created_at >= $2::timestamptz)
+		  AND ($3 = '' OR created_at <= $3::timestamptz)
+		GROUP BY hour
+		ORDER BY hour ASC`, branchID, from, to)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	list := make([]*ports.HourlyStat, 0)
+	for rows.Next() {
+		var s ports.HourlyStat
+		if err := rows.Scan(&s.Hour, &s.Orders, &s.Revenue); err != nil {
+			return nil, err
+		}
+		list = append(list, &s)
+	}
+	return list, rows.Err()
+}
+
 func (r *ReportRepo) DailySeries(ctx context.Context, branchID, from, to string) ([]*ports.DailyStat, error) {
 	rows, err := r.db.Query(ctx, `
 		SELECT

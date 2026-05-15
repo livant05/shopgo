@@ -118,6 +118,8 @@ func Setup(r *gin.Engine, d *Deps) {
 		adm.GET("/reports/dashboard", d.Report.Dashboard)
 		adm.GET("/reports/sales", d.Report.Sales)
 		adm.GET("/reports/products", d.Report.TopProducts)
+		adm.GET("/reports/customers", d.Report.TopCustomers)
+		adm.GET("/reports/hourly", d.Report.HourlySeries)
 		adm.GET("/reports/branches", d.Report.ByBranch)
 		adm.GET("/reports/export/sales", d.Report.ExportSales)
 		adm.GET("/reports/export/inventory", d.Report.ExportInventory)

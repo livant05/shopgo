@@ -950,6 +950,27 @@ func (h *ReportHandler) TopProducts(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": data})
 }
 
+func (h *ReportHandler) TopCustomers(c *gin.Context) {
+	from, to := c.Query("from"), c.Query("to")
+	n := queryInt(c, "n", 10)
+	data, err := h.repo.TopCustomers(c.Request.Context(), from, to, n)
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"data": data})
+}
+
+func (h *ReportHandler) HourlySeries(c *gin.Context) {
+	from, to := c.Query("from"), c.Query("to")
+	data, err := h.repo.HourlySeries(c.Request.Context(), c.Query("branch_id"), from, to)
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"data": data})
+}
+
 func (h *ReportHandler) ByBranch(c *gin.Context) {
 	from, to := c.Query("from"), c.Query("to")
 	data, err := h.repo.SalesByBranch(c.Request.Context(), from, to)

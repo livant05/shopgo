@@ -111,6 +111,8 @@ type ReportRepository interface {
 	Revenue(ctx context.Context, from, to string) (*RevenueMetrics, error)
 	SalesByBranch(ctx context.Context, from, to string) ([]*BranchSales, error)
 	TopProducts(ctx context.Context, branchID, from, to string, n int) ([]*TopProduct, error)
+	TopCustomers(ctx context.Context, from, to string, n int) ([]*TopCustomer, error)
+	HourlySeries(ctx context.Context, branchID, from, to string) ([]*HourlyStat, error)
 	DailySeries(ctx context.Context, branchID, from, to string) ([]*DailyStat, error)
 	InventoryReport(ctx context.Context, branchID string) ([]*InvRow, error)
 }
@@ -136,6 +138,20 @@ type TopProduct struct {
 	SKU       string  `json:"sku"`
 	UnitsSold int64   `json:"units_sold"`
 	Revenue   float64 `json:"revenue"`
+}
+
+type TopCustomer struct {
+	CustomerID string  `json:"customer_id"`
+	Email      string  `json:"email"`
+	FullName   string  `json:"full_name"`
+	Orders     int64   `json:"orders"`
+	Revenue    float64 `json:"revenue"`
+}
+
+type HourlyStat struct {
+	Hour    int     `json:"hour"`
+	Orders  int64   `json:"orders"`
+	Revenue float64 `json:"revenue"`
 }
 
 type DailyStat struct {
