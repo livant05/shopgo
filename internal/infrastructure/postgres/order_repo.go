@@ -18,13 +18,17 @@ type OrderRepo struct{ db *pgxpool.Pool }
 
 func NewOrderRepo(db *pgxpool.Pool) *OrderRepo { return &OrderRepo{db} }
 
+const orderSelect = `
+	SELECT id, branch_id, customer_id, status, items, subtotal, tax, discount,
+	       shipping_cost, total, currency, shipping_address,
+	       COALESCE(payment_intent_id,''), COALESCE(coupon_code,''),
+	       COALESCE(reservation_id,''), COALESCE(notes,''),
+	       COALESCE(refund_status,'none'), COALESCE(refund_reason,''), refunded_at,
+	       created_at, updated_at
+	FROM orders`
+
 func (r *OrderRepo) GetByID(ctx context.Context, id string) (*domain.Order, error) {
-	return r.scanOrder(r.db.QueryRow(ctx, `
-		SELECT id, branch_id, customer_id, status, items, subtotal, tax, discount,
-		       shipping_cost, total, currency, shipping_address,
-		       COALESCE(payment_intent_id,''), COALESCE(coupon_code,''),
-		       COALESCE(reservation_id,''), COALESCE(notes,''), created_at, updated_at
-		FROM orders WHERE id=$1`, id))
+	return r.scanOrder(r.db.QueryRow(ctx, orderSelect+` WHERE id=$1`, id))
 }
 
 func (r *OrderRepo) List(ctx context.Context, f ports.OrderFilter) (*ports.Page[domain.Order], error) {
@@ -54,6 +58,11 @@ func (r *OrderRepo) List(ctx context.Context, f ports.OrderFilter) (*ports.Page[
 		args = append(args, f.Status)
 		i++
 	}
+	if f.RefundStatus != "" {
+		where = append(where, "refund_status=$"+argN(i))
+		args = append(args, f.RefundStatus)
+		i++
+	}
 
 	whereClause := "1=1"
 	if len(where) > 0 {
@@ -66,12 +75,8 @@ func (r *OrderRepo) List(ctx context.Context, f ports.OrderFilter) (*ports.Page[
 	offset := (f.Page - 1) * f.PageSize
 	args = append(args, f.PageSize, offset)
 
-	rows, err := r.db.Query(ctx, `
-		SELECT id, branch_id, customer_id, status, items, subtotal, tax, discount,
-		       shipping_cost, total, currency, shipping_address,
-		       COALESCE(payment_intent_id,''), COALESCE(coupon_code,''),
-		       COALESCE(reservation_id,''), COALESCE(notes,''), created_at, updated_at
-		FROM orders WHERE `+whereClause+`
+	rows, err := r.db.Query(ctx, orderSelect+`
+		WHERE `+whereClause+`
 		ORDER BY created_at DESC
 		LIMIT $`+argN(i)+` OFFSET $`+argN(i+1),
 		args...)
@@ -119,7 +124,9 @@ func (r *OrderRepo) Create(ctx context.Context, o *domain.Order) (*domain.Order,
 		RETURNING id, branch_id, customer_id, status, items, subtotal, tax, discount,
 		          shipping_cost, total, currency, shipping_address,
 		          COALESCE(payment_intent_id,''), COALESCE(coupon_code,''),
-		          COALESCE(reservation_id,''), COALESCE(notes,''), created_at, updated_at`,
+		          COALESCE(reservation_id,''), COALESCE(notes,''),
+		          COALESCE(refund_status,'none'), COALESCE(refund_reason,''), refunded_at,
+		          created_at, updated_at`,
 		o.ID, o.BranchID, o.CustomerID, o.Status, items, o.Subtotal, o.Tax, o.Discount,
 		o.ShippingCost, o.Total, o.Currency, addr, coupon, o.ReservationID, notes))
 }
@@ -137,6 +144,51 @@ func (r *OrderRepo) ConfirmPayment(ctx context.Context, orderID, paymentIntentID
 	return err
 }
 
+func (r *OrderRepo) RequestRefund(ctx context.Context, orderID, reason string) error {
+	tag, err := r.db.Exec(ctx, `
+		UPDATE orders
+		SET refund_status='requested', refund_reason=$2, updated_at=NOW()
+		WHERE id=$1 AND status='delivered' AND refund_status='none'`,
+		orderID, reason)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ports.ErrInvalidTransition
+	}
+	return nil
+}
+
+func (r *OrderRepo) ApproveRefund(ctx context.Context, orderID string) error {
+	tag, err := r.db.Exec(ctx, `
+		UPDATE orders
+		SET refund_status='approved', refunded_at=NOW(), status='refunded', updated_at=NOW()
+		WHERE id=$1 AND refund_status='requested'`,
+		orderID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ports.ErrInvalidTransition
+	}
+	return nil
+}
+
+func (r *OrderRepo) RejectRefund(ctx context.Context, orderID string) error {
+	tag, err := r.db.Exec(ctx, `
+		UPDATE orders
+		SET refund_status='rejected', updated_at=NOW()
+		WHERE id=$1 AND refund_status='requested'`,
+		orderID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ports.ErrInvalidTransition
+	}
+	return nil
+}
+
 func (r *OrderRepo) scanOrder(row rowScanner) (*domain.Order, error) {
 	var o domain.Order
 	var items, addr []byte
@@ -145,6 +197,7 @@ func (r *OrderRepo) scanOrder(row rowScanner) (*domain.Order, error) {
 		&items, &o.Subtotal, &o.Tax, &o.Discount, &o.ShippingCost, &o.Total,
 		&o.Currency, &addr,
 		&o.PaymentIntentID, &o.CouponCode, &o.ReservationID, &o.Notes,
+		&o.RefundStatus, &o.RefundReason, &o.RefundedAt,
 		&o.CreatedAt, &o.UpdatedAt,
 	); err != nil {
 		if err == pgx.ErrNoRows {

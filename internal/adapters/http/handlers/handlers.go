@@ -588,6 +588,62 @@ func (h *OrderHandler) UpdateStatus(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
+func (h *OrderHandler) ListAll(c *gin.Context) {
+	f := ports.OrderFilter{
+		Status:       c.Query("status"),
+		RefundStatus: c.Query("refund_status"),
+		Page:         queryInt(c, "page", 1),
+		PageSize:     queryInt(c, "page_size", 20),
+	}
+	page, err := h.repo.List(c.Request.Context(), f)
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, page)
+}
+
+func (h *OrderHandler) RequestRefund(c *gin.Context) {
+	var req struct {
+		Reason string `json:"reason" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		apiErr(c, http.StatusBadRequest, "INVALID_BODY", err.Error())
+		return
+	}
+	if err := h.svc.RequestRefund(c.Request.Context(), c.Param("id"), req.Reason, c.GetString("user_id")); err != nil {
+		mapErr(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+func (h *OrderHandler) ProcessRefund(c *gin.Context) {
+	var req struct {
+		Action string `json:"action" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		apiErr(c, http.StatusBadRequest, "INVALID_BODY", err.Error())
+		return
+	}
+	var err error
+	adminID := c.GetString("user_id")
+	switch req.Action {
+	case "approve":
+		err = h.svc.ApproveRefund(c.Request.Context(), c.Param("id"), adminID)
+	case "reject":
+		err = h.svc.RejectRefund(c.Request.Context(), c.Param("id"))
+	default:
+		apiErr(c, http.StatusBadRequest, "INVALID_ACTION", "acción debe ser 'approve' o 'reject'")
+		return
+	}
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
 // ──── PaymentHandler ───────────────────────────────────────
 
 type PaymentHandler struct {

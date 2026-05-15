@@ -80,6 +80,59 @@
           </div>
         </div>
 
+        <!-- Refund section -->
+        <div class="refund-card" v-if="order.status === 'delivered' || order.refund_status !== 'none'">
+          <template v-if="order.refund_status === 'none' || !order.refund_status">
+            <h2 class="section-title">¿Problemas con tu pedido?</h2>
+            <p class="refund-hint">Si recibiste un producto incorrecto o dañado, puedes solicitar una devolución.</p>
+            <button class="btn-refund" @click="showRefundForm = true">Solicitar devolución</button>
+
+            <div v-if="showRefundForm" class="refund-form">
+              <label class="refund-label">Motivo de la devolución *</label>
+              <textarea v-model="refundReason" class="refund-textarea" rows="3"
+                placeholder="Describe el problema con tu pedido…" maxlength="500" />
+              <div class="refund-form-actions">
+                <button class="btn-cancel" @click="showRefundForm = false; refundReason = ''">Cancelar</button>
+                <button class="btn-submit" :disabled="!refundReason.trim() || refundLoading" @click="submitRefund">
+                  {{ refundLoading ? 'Enviando…' : 'Confirmar solicitud' }}
+                </button>
+              </div>
+              <p v-if="refundErr" class="refund-err">{{ refundErr }}</p>
+            </div>
+          </template>
+
+          <template v-else-if="order.refund_status === 'requested'">
+            <div class="refund-status-box status-pending">
+              <span class="rsb-icon">⏳</span>
+              <div>
+                <p class="rsb-title">Devolución en revisión</p>
+                <p class="rsb-sub">Tu solicitud fue enviada. El equipo la revisará pronto.</p>
+                <p v-if="order.refund_reason" class="rsb-reason">"{{ order.refund_reason }}"</p>
+              </div>
+            </div>
+          </template>
+
+          <template v-else-if="order.refund_status === 'approved'">
+            <div class="refund-status-box status-approved">
+              <span class="rsb-icon">✓</span>
+              <div>
+                <p class="rsb-title">Devolución aprobada</p>
+                <p class="rsb-sub">Tu reembolso fue procesado exitosamente.</p>
+              </div>
+            </div>
+          </template>
+
+          <template v-else-if="order.refund_status === 'rejected'">
+            <div class="refund-status-box status-rejected">
+              <span class="rsb-icon">✕</span>
+              <div>
+                <p class="rsb-title">Devolución rechazada</p>
+                <p class="rsb-sub">Tu solicitud no cumplió los requisitos de devolución.</p>
+              </div>
+            </div>
+          </template>
+        </div>
+
         <!-- Actions -->
         <div class="actions">
           <router-link to="/catalog" class="btn-secondary">Seguir comprando</router-link>
@@ -97,9 +150,27 @@ import { useRoute } from 'vue-router'
 import { api } from '../api/client'
 import type { Order } from '../types'
 
-const route   = useRoute()
-const order   = ref<Order | null>(null)
-const loading = ref(true)
+const route         = useRoute()
+const order         = ref<Order | null>(null)
+const loading       = ref(true)
+const showRefundForm = ref(false)
+const refundReason  = ref('')
+const refundLoading = ref(false)
+const refundErr     = ref('')
+
+async function submitRefund() {
+  if (!order.value || !refundReason.value.trim()) return
+  refundLoading.value = true; refundErr.value = ''
+  try {
+    await api.post(`/orders/${order.value.id}/refund`, { reason: refundReason.value.trim() })
+    order.value.refund_status = 'requested'
+    order.value.refund_reason = refundReason.value.trim()
+    showRefundForm.value = false
+    refundReason.value = ''
+  } catch (e: any) {
+    refundErr.value = e.response?.data?.message ?? 'Error al enviar la solicitud'
+  } finally { refundLoading.value = false }
+}
 
 const STATUS_ORDER = ['pending', 'confirmed', 'processing', 'shipped', 'delivered']
 
@@ -233,4 +304,38 @@ onMounted(async () => {
 .btn-secondary:hover { background: #e2e8f0; }
 .btn-outline   { background: none; border: 1.5px solid #3b82f6; color: #3b82f6; padding: .7rem 1.6rem; border-radius: 10px; text-decoration: none; font-weight: 600; font-size: .9rem; }
 .btn-outline:hover { background: #eff6ff; }
+
+/* Refund section */
+.refund-card { background: #fff; border-radius: 16px; padding: 1.75rem; box-shadow: 0 1px 4px rgba(0,0,0,.07); }
+.refund-hint  { font-size: .85rem; color: #64748b; margin: -.5rem 0 1rem; }
+.btn-refund   { background: #fef3c7; border: 1.5px solid #fcd34d; color: #92400e; padding: .65rem 1.4rem; border-radius: 8px; font-size: .875rem; font-weight: 600; cursor: pointer; }
+.btn-refund:hover { background: #fde68a; }
+
+.refund-form  { margin-top: 1.25rem; display: flex; flex-direction: column; gap: .75rem; }
+.refund-label { font-size: .8rem; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: .05em; }
+.refund-textarea { border: 1.5px solid #e2e8f0; border-radius: 8px; padding: .75rem; font-size: .875rem; color: #1e293b; resize: vertical; font-family: inherit; }
+.refund-textarea:focus { outline: none; border-color: #3b82f6; }
+.refund-form-actions { display: flex; gap: .75rem; justify-content: flex-end; }
+.btn-cancel { background: #f1f5f9; border: none; color: #64748b; padding: .65rem 1.25rem; border-radius: 8px; font-size: .875rem; font-weight: 600; cursor: pointer; }
+.btn-submit { background: #1d4ed8; border: none; color: #fff; padding: .65rem 1.4rem; border-radius: 8px; font-size: .875rem; font-weight: 700; cursor: pointer; }
+.btn-submit:disabled { opacity: .5; cursor: not-allowed; }
+.refund-err   { color: #ef4444; font-size: .8rem; }
+
+.refund-status-box { display: flex; align-items: flex-start; gap: 1rem; padding: 1.25rem; border-radius: 12px; }
+.rsb-icon  { font-size: 1.25rem; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0; }
+.rsb-title { font-size: .95rem; font-weight: 700; margin: 0 0 .25rem; }
+.rsb-sub   { font-size: .8rem; margin: 0; }
+.rsb-reason { font-size: .8rem; font-style: italic; margin: .5rem 0 0; opacity: .8; }
+.status-pending  { background: #fef9c3; }
+.status-pending .rsb-icon  { background: #fef08a; color: #854d0e; }
+.status-pending .rsb-title { color: #854d0e; }
+.status-pending .rsb-sub   { color: #92400e; }
+.status-approved { background: #dcfce7; }
+.status-approved .rsb-icon  { background: #bbf7d0; color: #15803d; }
+.status-approved .rsb-title { color: #15803d; }
+.status-approved .rsb-sub   { color: #166534; }
+.status-rejected { background: #fee2e2; }
+.status-rejected .rsb-icon  { background: #fecaca; color: #b91c1c; }
+.status-rejected .rsb-title { color: #b91c1c; }
+.status-rejected .rsb-sub   { color: #991b1b; }
 </style>

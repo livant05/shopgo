@@ -75,6 +75,7 @@ type InventoryRepository interface {
 	List(ctx context.Context, branchID string) ([]*domain.Inventory, error)
 	GetLowStock(ctx context.Context, branchID string) ([]*domain.Inventory, error)
 	Adjust(ctx context.Context, productID, branchID string, delta int, reason, note, userID string) (*domain.Inventory, error)
+	Restore(ctx context.Context, productID, branchID string, qty int, reason, userID string) error
 	Reserve(ctx context.Context, branchID string, items []ReserveItem) (reservationID string, err error)
 	Commit(ctx context.Context, reservationID string) error
 	Release(ctx context.Context, reservationID string) error
@@ -88,16 +89,20 @@ type OrderRepository interface {
 	Create(ctx context.Context, o *domain.Order) (*domain.Order, error)
 	UpdateStatus(ctx context.Context, id string, status domain.OrderStatus) error
 	ConfirmPayment(ctx context.Context, orderID, paymentIntentID string) error
+	RequestRefund(ctx context.Context, orderID, reason string) error
+	ApproveRefund(ctx context.Context, orderID string) error
+	RejectRefund(ctx context.Context, orderID string) error
 }
 
 type OrderFilter struct {
-	BranchID   string
-	CustomerID string
-	Status     string
-	From       string
-	To         string
-	Page       int
-	PageSize   int
+	BranchID     string
+	CustomerID   string
+	Status       string
+	RefundStatus string
+	From         string
+	To           string
+	Page         int
+	PageSize     int
 }
 
 type ReportRepository interface {

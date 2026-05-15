@@ -144,3 +144,41 @@ func (s *OrderService) UpdateStatus(ctx context.Context, orderID, newStatus stri
 	}
 	return s.orders.UpdateStatus(ctx, orderID, next)
 }
+
+func (s *OrderService) RequestRefund(ctx context.Context, orderID, reason, customerID string) error {
+	order, err := s.orders.GetByID(ctx, orderID)
+	if err != nil {
+		return err
+	}
+	if order.CustomerID != customerID {
+		return ports.ErrNotFound
+	}
+	if order.Status != domain.StatusDelivered {
+		return ports.ErrInvalidTransition
+	}
+	if order.RefundStatus != "none" {
+		return ports.ErrConflict
+	}
+	return s.orders.RequestRefund(ctx, orderID, reason)
+}
+
+func (s *OrderService) ApproveRefund(ctx context.Context, orderID, adminID string) error {
+	order, err := s.orders.GetByID(ctx, orderID)
+	if err != nil {
+		return err
+	}
+	if err := s.orders.ApproveRefund(ctx, orderID); err != nil {
+		return err
+	}
+	reason := "Devolución aprobada #" + orderID[:8]
+	for _, item := range order.Items {
+		if restoreErr := s.inventory.Restore(ctx, item.ProductID, order.BranchID, item.Quantity, reason, adminID); restoreErr != nil {
+			slog.Error("error restaurando inventario en devolución", "product_id", item.ProductID, "err", restoreErr)
+		}
+	}
+	return nil
+}
+
+func (s *OrderService) RejectRefund(ctx context.Context, orderID string) error {
+	return s.orders.RejectRefund(ctx, orderID)
+}

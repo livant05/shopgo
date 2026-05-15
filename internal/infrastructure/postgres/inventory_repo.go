@@ -130,6 +130,34 @@ func (r *InventoryRepo) Adjust(ctx context.Context, productID, branchID string, 
 	return &inv, nil
 }
 
+func (r *InventoryRepo) Restore(ctx context.Context, productID, branchID string, qty int, reason, userID string) error {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	_, err = tx.Exec(ctx, `
+		INSERT INTO inventory (product_id, branch_id, quantity, reserved_qty, reorder_point)
+		VALUES ($1,$2,$3,0,5)
+		ON CONFLICT (product_id, branch_id) DO UPDATE
+		SET quantity = inventory.quantity + $3, updated_at=NOW()`,
+		productID, branchID, qty)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(ctx, `
+		INSERT INTO inventory_movements (id, product_id, to_branch_id, quantity, type, reason, note, user_id)
+		VALUES ($1,$2,$3,$4,'return',$5,'',$6)`,
+		uuid.New().String(), productID, branchID, qty, reason, userID)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit(ctx)
+}
+
 func (r *InventoryRepo) Reserve(ctx context.Context, branchID string, items []ports.ReserveItem) (string, error) {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {

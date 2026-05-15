@@ -18,6 +18,7 @@ export interface Order {
   id: string; status: string; items: OrderItem[]
   subtotal: number; tax: number; discount: number; total: number
   currency: string; created_at: string
+  refund_status?: string; refund_reason?: string; refunded_at?: string
 }
 
 export interface OrderItem {

@@ -58,6 +58,7 @@ func Setup(r *gin.Engine, d *Deps) {
 		auth.POST("/orders", middleware.RequireRole("customer"), d.Order.Create)
 		auth.GET("/orders/:id", middleware.RequireRole("customer"), d.Order.Get)
 		auth.GET("/orders", middleware.RequireRole("customer"), d.Order.List)
+		auth.POST("/orders/:id/refund", middleware.RequireRole("customer"), d.Order.RequestRefund)
 		auth.POST("/payments/intent", middleware.RequireRole("customer"), d.Payment.CreateIntent)
 		auth.POST("/coupons/validate", middleware.RequireRole("customer"), d.Payment.ValidateCoupon)
 		auth.POST("/auth/setup-mfa", d.Auth.SetupMFA)
@@ -126,6 +127,11 @@ func Setup(r *gin.Engine, d *Deps) {
 		adm.GET("/coupons", d.Coupon.List)
 		adm.POST("/coupons", d.Coupon.Create)
 		adm.PATCH("/coupons/:id/active", d.Coupon.SetActive)
+
+		// Órdenes admin (todas las sucursales)
+		adm.GET("/orders", d.Order.ListAll)
+		adm.PATCH("/orders/:id/status", d.Order.UpdateStatus)
+		adm.PUT("/orders/:id/refund", d.Order.ProcessRefund)
 
 		// Configuración de la tienda
 		adm.GET("/store", d.Store.GetConfig)
