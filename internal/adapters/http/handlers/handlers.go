@@ -10,6 +10,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/yourorg/shopgo/internal/domain"
+	"github.com/yourorg/shopgo/internal/infrastructure/postgres"
 	"github.com/yourorg/shopgo/internal/ports"
 	"github.com/yourorg/shopgo/internal/services"
 )
@@ -867,4 +868,65 @@ func (h *ReportHandler) ExportInventory(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"data": data})
+}
+
+// ──── CouponHandler ───────────────────────────────────────
+
+type couponRepo interface {
+	List(ctx context.Context) ([]domain.Coupon, error)
+	Create(ctx context.Context, in postgres.CreateCouponInput) (*domain.Coupon, error)
+	SetActive(ctx context.Context, id string, active bool) error
+}
+
+type CouponHandler struct{ repo couponRepo }
+
+func NewCouponHandler(repo couponRepo) *CouponHandler { return &CouponHandler{repo} }
+
+func (h *CouponHandler) List(c *gin.Context) {
+	coupons, err := h.repo.List(c.Request.Context())
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
+	if coupons == nil {
+		coupons = []domain.Coupon{}
+	}
+	c.JSON(http.StatusOK, gin.H{"data": coupons})
+}
+
+func (h *CouponHandler) Create(c *gin.Context) {
+	var req postgres.CreateCouponInput
+	if err := c.ShouldBindJSON(&req); err != nil {
+		apiErr(c, http.StatusBadRequest, "INVALID_BODY", err.Error())
+		return
+	}
+	if req.Code == "" || req.Type == "" || req.Value <= 0 {
+		apiErr(c, http.StatusBadRequest, "INVALID_BODY", "code, type y value son requeridos")
+		return
+	}
+	if req.Type != "percent" && req.Type != "fixed" {
+		apiErr(c, http.StatusBadRequest, "INVALID_BODY", "type debe ser 'percent' o 'fixed'")
+		return
+	}
+	coupon, err := h.repo.Create(c.Request.Context(), req)
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
+	c.JSON(http.StatusCreated, coupon)
+}
+
+func (h *CouponHandler) SetActive(c *gin.Context) {
+	var req struct {
+		Active bool `json:"active"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		apiErr(c, http.StatusBadRequest, "INVALID_BODY", err.Error())
+		return
+	}
+	if err := h.repo.SetActive(c.Request.Context(), c.Param("id"), req.Active); err != nil {
+		mapErr(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true})
 }

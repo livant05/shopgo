@@ -107,6 +107,7 @@ func main() {
 		Payment:   handlers.NewPaymentHandler(paySvc, couponRepo.Validate),
 		Branch:    handlers.NewBranchHandler(branchRepo, userRepo, authSvc),
 		Store:     handlers.NewStoreHandler(storeRepo),
+		Coupon:    handlers.NewCouponHandler(couponRepo),
 		PubKey:    pubKey,
 		AdminIPs:  cfg.AdminIPs,
 	}

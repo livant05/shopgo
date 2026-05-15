@@ -16,6 +16,7 @@ type Deps struct {
 	Payment   *handlers.PaymentHandler
 	Branch    *handlers.BranchHandler
 	Store     *handlers.StoreHandler
+	Coupon    *handlers.CouponHandler
 	Health    *handlers.HealthHandler
 	PubKey    any
 	AdminIPs  []string
@@ -115,6 +116,11 @@ func Setup(r *gin.Engine, d *Deps) {
 		adm.GET("/reports/branches", d.Report.ByBranch)
 		adm.GET("/reports/export/sales", d.Report.ExportSales)
 		adm.GET("/reports/export/inventory", d.Report.ExportInventory)
+
+		// Cupones
+		adm.GET("/coupons", d.Coupon.List)
+		adm.POST("/coupons", d.Coupon.Create)
+		adm.PATCH("/coupons/:id/active", d.Coupon.SetActive)
 
 		// Configuración de la tienda
 		adm.GET("/store", d.Store.GetConfig)

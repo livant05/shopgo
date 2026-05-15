@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/yourorg/shopgo/internal/domain"
@@ -56,4 +57,47 @@ func (r *CouponRepo) Validate(ctx context.Context, code string, subtotal float64
 	}
 	discount := c.Apply(subtotal)
 	return &c, discount, nil
+}
+
+func (r *CouponRepo) List(ctx context.Context) ([]domain.Coupon, error) {
+	rows, err := r.db.Query(ctx, `
+		SELECT id, code, type, value, valid_until, max_uses, uses_count, is_active
+		FROM coupons ORDER BY created_at DESC`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var coupons []domain.Coupon
+	for rows.Next() {
+		var c domain.Coupon
+		if err := rows.Scan(&c.ID, &c.Code, &c.Type, &c.Value, &c.ValidUntil, &c.MaxUses, &c.UsesCount, &c.IsActive); err != nil {
+			return nil, err
+		}
+		coupons = append(coupons, c)
+	}
+	return coupons, rows.Err()
+}
+
+type CreateCouponInput struct {
+	Code       string     `json:"code"`
+	Type       string     `json:"type"`
+	Value      float64    `json:"value"`
+	ValidUntil *time.Time `json:"valid_until,omitempty"`
+	MaxUses    *int       `json:"max_uses,omitempty"`
+}
+
+func (r *CouponRepo) Create(ctx context.Context, in CreateCouponInput) (*domain.Coupon, error) {
+	var c domain.Coupon
+	err := r.db.QueryRow(ctx, `
+		INSERT INTO coupons (code, type, value, valid_until, max_uses)
+		VALUES ($1, $2, $3, $4, $5)
+		RETURNING id, code, type, value, valid_until, max_uses, uses_count, is_active`,
+		in.Code, in.Type, in.Value, in.ValidUntil, in.MaxUses).
+		Scan(&c.ID, &c.Code, &c.Type, &c.Value, &c.ValidUntil, &c.MaxUses, &c.UsesCount, &c.IsActive)
+	return &c, err
+}
+
+func (r *CouponRepo) SetActive(ctx context.Context, id string, active bool) error {
+	_, err := r.db.Exec(ctx, `UPDATE coupons SET is_active=$2 WHERE id=$1`, id, active)
+	return err
 }
