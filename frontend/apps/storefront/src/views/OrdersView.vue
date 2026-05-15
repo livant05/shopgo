@@ -26,6 +26,7 @@
           <div class="order-right">
             <span class="status-badge" :class="o.status">{{ LABELS[o.status] ?? o.status }}</span>
             <span class="order-total">{{ fmt(o.total) }}</span>
+            <router-link :to="`/orders/${o.id}`" class="track-btn" @click.stop>Rastrear →</router-link>
             <span class="chevron" :class="{ open: expanded === o.id }">›</span>
           </div>
         </div>
@@ -134,6 +135,8 @@ onMounted(load)
 .order-total { font-weight: 700; font-size: 1rem; color: #1e293b; }
 .chevron     { color: #94a3b8; font-size: 1.2rem; transition: transform .2s; display: inline-block; }
 .chevron.open { transform: rotate(90deg); }
+.track-btn   { font-size: .78rem; font-weight: 700; color: #3b82f6; text-decoration: none; white-space: nowrap; padding: .3rem .7rem; border-radius: 6px; background: #eff6ff; }
+.track-btn:hover { background: #dbeafe; }
 
 /* status badges */
 .status-badge { padding: .25rem .75rem; border-radius: 999px; font-size: .75rem; font-weight: 700; }
