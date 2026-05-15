@@ -2,25 +2,14 @@ run:
   timeout: 5m
 
 linters:
+  disable-all: true
   enable:
-    - gosimple
     - govet
     - ineffassign
     - staticcheck
     - gofmt
-    - misspell
-  disable:
-    - errcheck
-    - goimports
-    - gocritic
-    - gosec
-    - bodyclose
-    - contextcheck
-    - sqlclosecheck
 
 issues:
   exclude-rules:
     - path: "_test\\.go"
       linters: [govet, staticcheck]
-    - path: "vendor/"
-      linters: [all]

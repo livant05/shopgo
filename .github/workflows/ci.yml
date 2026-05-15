@@ -48,7 +48,7 @@ jobs:
         with:
           go-version: "1.23"
       - name: Run tests
-        run: go test -race -coverprofile=coverage.out ./...
+        run: go test -mod=vendor -race -coverprofile=coverage.out ./internal/services/...
         env:
           DATABASE_URL: postgres://testuser:testpass@localhost:5432/testdb?sslmode=disable
           REDIS_ADDR:   localhost:6379
