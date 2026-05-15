@@ -1,0 +1,2 @@
+ALTER TABLE users
+  ADD COLUMN IF NOT EXISTS default_address JSONB NOT NULL DEFAULT '{}';

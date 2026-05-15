@@ -61,6 +61,7 @@ function logout() {
             👤 {{ auth.user?.first_name || 'Mi cuenta' }} ▾
           </button>
           <div v-if="userOpen" class="dropdown">
+            <router-link to="/profile" class="dd-item" @click="userOpen = false">👤 Mi perfil</router-link>
             <router-link to="/orders" class="dd-item" @click="userOpen = false">📦 Mis pedidos</router-link>
             <button class="dd-item danger" @click="logout">Cerrar sesión</button>
           </div>
@@ -80,6 +81,7 @@ function logout() {
       <router-link to="/catalog" @click="menuOpen = false">Catálogo</router-link>
       <router-link to="/cart"    @click="menuOpen = false">Carrito ({{ cart.count }})</router-link>
       <template v-if="auth.isAuth">
+        <router-link to="/profile" @click="menuOpen = false">Mi perfil</router-link>
         <router-link to="/orders" @click="menuOpen = false">Mis pedidos</router-link>
         <button @click="logout">Cerrar sesión</button>
       </template>

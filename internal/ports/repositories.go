@@ -53,6 +53,8 @@ type UserRepository interface {
 	GetByEmail(ctx context.Context, email string) (*domain.User, error)
 	Create(ctx context.Context, u *domain.User) (*domain.User, error)
 	Update(ctx context.Context, u *domain.User) (*domain.User, error)
+	UpdateProfile(ctx context.Context, id, firstName, lastName, phone string, addr domain.Address) (*domain.User, error)
+	ChangePassword(ctx context.Context, id, newHash string) error
 	SetActive(ctx context.Context, id string, active bool) error
 	SetMFASecret(ctx context.Context, id, secret string) error
 	List(ctx context.Context, page, pageSize int) (*Page[domain.User], error)

@@ -115,6 +115,10 @@ func (s *AuthService) HashPassword(password string) (string, error) {
 	return string(b), err
 }
 
+func (s *AuthService) VerifyPassword(hash, password string) error {
+	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+}
+
 func (s *AuthService) issue(user *domain.User) (*TokenPair, error) {
 	now := time.Now()
 	claims := Claims{

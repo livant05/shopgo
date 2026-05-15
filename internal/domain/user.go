@@ -16,19 +16,20 @@ var roleLevels = map[Role]int{
 }
 
 type User struct {
-	ID           string    `json:"id"`
-	Email        string    `json:"email"`
-	PasswordHash string    `json:"-"`
-	Role         Role      `json:"role"`
-	BranchID     string    `json:"branch_id,omitempty"` // nil = acceso a todas
-	FirstName    string    `json:"first_name"`
-	LastName     string    `json:"last_name"`
-	Phone        string    `json:"phone,omitempty"`
-	MFASecret    string    `json:"-"`
-	MFAEnabled   bool      `json:"mfa_enabled"`
-	IsActive     bool      `json:"is_active"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	ID             string    `json:"id"`
+	Email          string    `json:"email"`
+	PasswordHash   string    `json:"-"`
+	Role           Role      `json:"role"`
+	BranchID       string    `json:"branch_id,omitempty"`
+	FirstName      string    `json:"first_name"`
+	LastName       string    `json:"last_name"`
+	Phone          string    `json:"phone,omitempty"`
+	DefaultAddress Address   `json:"default_address,omitempty"`
+	MFASecret      string    `json:"-"`
+	MFAEnabled     bool      `json:"mfa_enabled"`
+	IsActive       bool      `json:"is_active"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
 }
 
 func (u *User) HasRole(min Role) bool {

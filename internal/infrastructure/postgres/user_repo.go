@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"encoding/json"
 	"math"
 
 	"github.com/google/uuid"
@@ -16,7 +17,7 @@ type UserRepo struct{ db *pgxpool.Pool }
 func NewUserRepo(db *pgxpool.Pool) *UserRepo { return &UserRepo{db} }
 
 const userCols = `id, email, password_hash, role, COALESCE(branch_id::text,''),
-	first_name, last_name, COALESCE(phone,''),
+	first_name, last_name, COALESCE(phone,''), COALESCE(default_address,'{}'),
 	COALESCE(mfa_secret,''), mfa_enabled, is_active, created_at, updated_at`
 
 func (r *UserRepo) GetByID(ctx context.Context, id string) (*domain.User, error) {
@@ -63,6 +64,22 @@ func (r *UserRepo) Update(ctx context.Context, u *domain.User) (*domain.User, er
 	return u, nil
 }
 
+func (r *UserRepo) UpdateProfile(ctx context.Context, id, firstName, lastName, phone string, addr domain.Address) (*domain.User, error) {
+	addrJSON, _ := json.Marshal(addr)
+	return r.scan(r.db.QueryRow(ctx, `
+		UPDATE users
+		SET first_name=$2, last_name=$3, phone=$4, default_address=$5, updated_at=NOW()
+		WHERE id=$1
+		RETURNING `+userCols,
+		id, firstName, lastName, phone, addrJSON))
+}
+
+func (r *UserRepo) ChangePassword(ctx context.Context, id, newHash string) error {
+	_, err := r.db.Exec(ctx,
+		`UPDATE users SET password_hash=$2, updated_at=NOW() WHERE id=$1`, id, newHash)
+	return err
+}
+
 func (r *UserRepo) SetActive(ctx context.Context, id string, active bool) error {
 	_, err := r.db.Exec(ctx, `UPDATE users SET is_active=$2, updated_at=NOW() WHERE id=$1`, id, active)
 	return err
@@ -105,9 +122,10 @@ func (r *UserRepo) List(ctx context.Context, page, pageSize int) (*ports.Page[do
 
 func (r *UserRepo) scan(row rowScanner) (*domain.User, error) {
 	var u domain.User
+	var addrJSON []byte
 	if err := row.Scan(
 		&u.ID, &u.Email, &u.PasswordHash, &u.Role, &u.BranchID,
-		&u.FirstName, &u.LastName, &u.Phone,
+		&u.FirstName, &u.LastName, &u.Phone, &addrJSON,
 		&u.MFASecret, &u.MFAEnabled, &u.IsActive, &u.CreatedAt, &u.UpdatedAt,
 	); err != nil {
 		if err == pgx.ErrNoRows {
@@ -115,5 +133,6 @@ func (r *UserRepo) scan(row rowScanner) (*domain.User, error) {
 		}
 		return nil, err
 	}
+	json.Unmarshal(addrJSON, &u.DefaultAddress)
 	return &u, nil
 }

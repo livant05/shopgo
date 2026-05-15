@@ -202,6 +202,56 @@ func (h *AuthHandler) SetupMFA(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"secret": secret, "qr_url": qrURL})
 }
 
+func (h *AuthHandler) UpdateProfile(c *gin.Context) {
+	var req struct {
+		FirstName string         `json:"first_name" binding:"required"`
+		LastName  string         `json:"last_name"`
+		Phone     string         `json:"phone"`
+		Address   domain.Address `json:"default_address"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		apiErr(c, http.StatusBadRequest, "INVALID_BODY", err.Error())
+		return
+	}
+	user, err := h.users.UpdateProfile(c.Request.Context(),
+		c.GetString("user_id"), req.FirstName, req.LastName, req.Phone, req.Address)
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, user)
+}
+
+func (h *AuthHandler) ChangePassword(c *gin.Context) {
+	var req struct {
+		CurrentPassword string `json:"current_password" binding:"required"`
+		NewPassword     string `json:"new_password"     binding:"required,min=8"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		apiErr(c, http.StatusBadRequest, "INVALID_BODY", err.Error())
+		return
+	}
+	user, err := h.users.GetByID(c.Request.Context(), c.GetString("user_id"))
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
+	if err := h.auth.VerifyPassword(user.PasswordHash, req.CurrentPassword); err != nil {
+		apiErr(c, http.StatusUnauthorized, "WRONG_PASSWORD", "contraseña actual incorrecta")
+		return
+	}
+	hash, err := h.auth.HashPassword(req.NewPassword)
+	if err != nil {
+		apiErr(c, http.StatusInternalServerError, "HASH_ERROR", "error interno")
+		return
+	}
+	if err := h.users.ChangePassword(c.Request.Context(), user.ID, hash); err != nil {
+		mapErr(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
 // ──── StoreHandler ──────────────────────────────────────────
 
 type storeRepository interface {

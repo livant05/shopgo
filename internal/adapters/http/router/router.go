@@ -59,6 +59,8 @@ func Setup(r *gin.Engine, d *Deps) {
 		auth.GET("/orders/:id", middleware.RequireRole("customer"), d.Order.Get)
 		auth.GET("/orders", middleware.RequireRole("customer"), d.Order.List)
 		auth.POST("/orders/:id/refund", middleware.RequireRole("customer"), d.Order.RequestRefund)
+		auth.PUT("/auth/profile",  d.Auth.UpdateProfile)
+		auth.PUT("/auth/password", d.Auth.ChangePassword)
 		auth.POST("/payments/intent", middleware.RequireRole("customer"), d.Payment.CreateIntent)
 		auth.POST("/coupons/validate", middleware.RequireRole("customer"), d.Payment.ValidateCoupon)
 		auth.POST("/auth/setup-mfa", d.Auth.SetupMFA)
