@@ -91,6 +91,14 @@ func main() {
 	orderSvc := services.NewOrderService(orderRepo, inventoryRepo, productRepo, branchRepo, redisClient)
 	paySvc := stripesvc.NewPaymentService(cfg.StripeSecretKey, cfg.StripeWebhookSecret, orderRepo)
 
+	// ── Notificaciones SSE ───────────────────────────────
+	notifyHub := handlers.NewNotifyHub()
+	go func() {
+		if err := redisClient.Subscribe(context.Background(), "notifications", notifyHub.Broadcast); err != nil {
+			slog.Error("suscripción Redis notificaciones", "err", err)
+		}
+	}()
+
 	// ── Handlers y router ────────────────────────────────
 	r := gin.New()
 
@@ -108,6 +116,7 @@ func main() {
 		Branch:    handlers.NewBranchHandler(branchRepo, userRepo, authSvc),
 		Store:     handlers.NewStoreHandler(storeRepo),
 		Coupon:    handlers.NewCouponHandler(couponRepo),
+		Notify:    handlers.NewNotifyHandler(notifyHub),
 		PubKey:    pubKey,
 		AdminIPs:  cfg.AdminIPs,
 	}

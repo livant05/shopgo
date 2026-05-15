@@ -32,18 +32,39 @@
         </Transition>
       </router-view>
     </main>
+
+    <!-- Notification toasts -->
+    <div class="toast-stack">
+      <TransitionGroup name="toast">
+        <div v-for="n in notifications" :key="n.id" class="toast" @click="dismiss(n.id)">
+          <span class="toast-icon">🛒</span>
+          <div class="toast-body">
+            <p class="toast-title">Nuevo pedido</p>
+            <p class="toast-msg">{{ n.message }}</p>
+          </div>
+          <button class="toast-close">✕</button>
+        </div>
+      </TransitionGroup>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { useNotifications } from '../composables/useNotifications'
 
-const auth     = useAuthStore()
-const router   = useRouter()
+const auth      = useAuthStore()
+const router    = useRouter()
 const collapsed = ref(false)
 const storeName = import.meta.env.VITE_STORE_NAME ?? 'Mi Tienda'
+
+const { notifications, connect, dismiss } = useNotifications()
+
+onMounted(() => {
+  if (auth.hasRole('admin')) connect()
+})
 
 const navItems = [
   { to: '/',          icon: '📊', label: 'Dashboard',  minRole: 'staff'   },
@@ -80,4 +101,29 @@ const navItems = [
 .content { flex: 1; padding: 32px 36px; overflow-x: hidden; }
 .fade-enter-active, .fade-leave-active { transition: opacity .2s; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
+
+/* Toast notifications */
+.toast-stack {
+  position: fixed; bottom: 24px; right: 24px;
+  display: flex; flex-direction: column; gap: 10px; z-index: 9999;
+}
+.toast {
+  display: flex; align-items: flex-start; gap: 12px;
+  background: #1c2333; border: 1px solid #2d3a52;
+  border-left: 3px solid #38bdf8;
+  border-radius: 10px; padding: 14px 16px;
+  width: 320px; box-shadow: 0 8px 24px rgba(0,0,0,.4);
+  cursor: pointer;
+}
+.toast-icon { font-size: 20px; flex-shrink: 0; line-height: 1; }
+.toast-body { flex: 1; min-width: 0; }
+.toast-title { font-size: 12px; font-weight: 700; color: #38bdf8; margin: 0 0 2px; text-transform: uppercase; letter-spacing: .5px; }
+.toast-msg   { font-size: 13px; color: #d6dfe8; margin: 0; }
+.toast-close { background: none; border: none; color: #5a6a87; cursor: pointer; font-size: 14px; padding: 0; flex-shrink: 0; }
+.toast-close:hover { color: #d6dfe8; }
+
+.toast-enter-active { transition: all .3s ease; }
+.toast-leave-active { transition: all .25s ease; }
+.toast-enter-from   { opacity: 0; transform: translateX(40px); }
+.toast-leave-to     { opacity: 0; transform: translateX(40px); }
 </style>

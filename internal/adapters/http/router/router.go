@@ -17,6 +17,7 @@ type Deps struct {
 	Branch    *handlers.BranchHandler
 	Store     *handlers.StoreHandler
 	Coupon    *handlers.CouponHandler
+	Notify    *handlers.NotifyHandler
 	Health    *handlers.HealthHandler
 	PubKey    any
 	AdminIPs  []string
@@ -116,6 +117,9 @@ func Setup(r *gin.Engine, d *Deps) {
 		adm.GET("/reports/branches", d.Report.ByBranch)
 		adm.GET("/reports/export/sales", d.Report.ExportSales)
 		adm.GET("/reports/export/inventory", d.Report.ExportInventory)
+
+		// Notificaciones SSE (solo admin)
+		adm.GET("/notifications/stream", d.Notify.Stream)
 
 		// Cupones
 		adm.GET("/coupons", d.Coupon.List)

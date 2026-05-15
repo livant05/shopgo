@@ -116,11 +116,17 @@ func (s *OrderService) Create(ctx context.Context, in CreateOrderInput) (*domain
 
 	// PASO 6 — Publicar evento async (no bloquea la respuesta HTTP)
 	go func() {
-		channel := "orders:" + in.BranchID
-		if err := s.events.Publish(context.Background(), channel, map[string]any{
+		payload := map[string]any{
 			"event": "order.new", "order_id": created.ID, "total": created.Total,
-		}); err != nil {
+			"branch_id": in.BranchID,
+		}
+		ctx := context.Background()
+		if err := s.events.Publish(ctx, "orders:"+in.BranchID, payload); err != nil {
 			slog.Error("publicar evento orden", "err", err)
+		}
+		// Fan-out al canal global que alimenta el hub SSE del admin
+		if err := s.events.Publish(ctx, "notifications", payload); err != nil {
+			slog.Error("publicar notificación admin", "err", err)
 		}
 	}()
 
