@@ -24,3 +24,7 @@ frontend/apps/storefront/dist/
 
 # Logs
 *.log
+
+# Claude Code / temp
+.claude/
+tmp/

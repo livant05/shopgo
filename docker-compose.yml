@@ -1,22 +1,6 @@
 version: "3.9"
 
 services:
-  api:
-    build: .
-    ports:
-      - "8080:8080"
-    env_file: .env
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
-      interval: 15s
-      timeout: 5s
-      retries: 3
 
   postgres:
     image: postgres:16-alpine
@@ -29,7 +13,6 @@ services:
         -c max_connections=100
         -c shared_buffers=128MB
         -c effective_cache_size=512MB
-        -c wal_level=replica
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
@@ -55,6 +38,57 @@ services:
       timeout: 3s
       retries: 5
 
+  migrate:
+    image: postgres:16-alpine
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./db/migrations:/migrations:ro
+    entrypoint: >
+      sh -c "
+        psql postgres://shopuser:shoppass@postgres:5432/shopgo?sslmode=disable
+          -f /migrations/000001_schema.up.sql
+          -f /migrations/000002_indexes.up.sql
+          -f /migrations/000003_triggers.up.sql
+        echo 'Migraciones aplicadas'
+      "
+    restart: on-failure
+
+  api:
+    build: .
+    ports:
+      - "8082:8080"
+    env_file: .env.docker
+    volumes:
+      - ./deploy/secrets:/secrets:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+
+  seed:
+    build: .
+    entrypoint: []
+    command: ["sh", "-c", "echo 'seed skipped — run manually if needed'"]
+    env_file: .env.docker
+    volumes:
+      - ./deploy/secrets:/secrets:ro
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    profiles: ["seed"]
+
   minio:
     image: minio/minio:latest
     command: server /data --console-address ":9001"
@@ -73,9 +107,10 @@ services:
     volumes:
       - ./deploy/nginx/nginx.dev.conf:/etc/nginx/nginx.conf:ro
     ports:
-      - "80:80"
+      - "8888:80"
     depends_on:
-      - api
+      api:
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:
