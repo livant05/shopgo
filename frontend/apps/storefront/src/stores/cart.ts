@@ -39,13 +39,27 @@ export const useCartStore = defineStore('cart', () => {
     try {
       const r = await api.post('/coupons/validate', { code, subtotal: subtotal.value })
       coupon.value = code; discount.value = r.data.discount
+      save()
       return { ok: true }
     } catch { return { ok: false, message: 'Cupón inválido' } }
   }
 
-  function save() { localStorage.setItem('cart', JSON.stringify(items.value)) }
+  function save() {
+    localStorage.setItem('cart', JSON.stringify({
+      items: items.value,
+      coupon: coupon.value,
+      discount: discount.value,
+    }))
+  }
   function restore() {
-    try { const d = localStorage.getItem('cart'); if (d) items.value = JSON.parse(d) } catch {}
+    try {
+      const raw = localStorage.getItem('cart')
+      if (!raw) return
+      const d = JSON.parse(raw)
+      // Support both old format (plain array) and new format (object)
+      if (Array.isArray(d)) { items.value = d }
+      else { items.value = d.items ?? []; coupon.value = d.coupon ?? ''; discount.value = d.discount ?? 0 }
+    } catch {}
   }
   restore()
 
