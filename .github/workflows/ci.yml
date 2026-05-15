@@ -55,10 +55,9 @@ jobs:
           awk "BEGIN{exit ($PCT < 30)}" || (echo "❌ Coverage $PCT% < 30%" && exit 1)
 
   build:
-    name: Build & Push Docker
+    name: Build Docker
     runs-on: ubuntu-latest
     needs: [lint, test]
-    if: github.ref == 'refs/heads/main'
     permissions:
       contents: read
       packages: write
@@ -73,7 +72,7 @@ jobs:
       - uses: docker/build-push-action@v5
         with:
           context: .
-          push: true
+          push: false
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
