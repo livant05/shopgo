@@ -1,0 +1,121 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shopgo-api
+  namespace: shopgo-prod
+  labels:
+    app: shopgo-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: shopgo-api
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: shopgo-api
+    spec:
+      containers:
+        - name: api
+          image: ghcr.io/yourorg/shopgo:latest
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - secretRef:
+                name: shopgo-secrets
+          resources:
+            requests:
+              cpu:    "200m"
+              memory: "128Mi"
+            limits:
+              cpu:    "500m"
+              memory: "256Mi"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sleep", "5"]
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: shopgo-hpa
+  namespace: shopgo-prod
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: shopgo-api
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: shopgo-pdb
+  namespace: shopgo-prod
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: shopgo-api
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: shopgo-api-svc
+  namespace: shopgo-prod
+spec:
+  selector:
+    app: shopgo-api
+  ports:
+    - port: 80
+      targetPort: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: shopgo-ingress
+  namespace: shopgo-prod
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+spec:
+  tls:
+    - hosts:
+        - tudominio.com
+      secretName: shopgo-tls
+  rules:
+    - host: tudominio.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: shopgo-api-svc
+                port:
+                  number: 80

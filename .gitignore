@@ -1,0 +1,26 @@
+# Go
+*.exe
+*.test
+*.out
+/bin/
+/dist/
+
+# Secrets
+deploy/secrets/
+*.pem
+.env
+
+# Frontend
+frontend/apps/admin/node_modules/
+frontend/apps/storefront/node_modules/
+frontend/node_modules/
+frontend/apps/admin/dist/
+frontend/apps/storefront/dist/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Logs
+*.log

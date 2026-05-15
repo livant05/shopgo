@@ -1,0 +1,30 @@
+version: "3.9"
+
+services:
+  api:
+    image: ghcr.io/yourorg/shopgo:${IMAGE_TAG:-latest}
+    restart: always
+    environment:
+      APP_ENV: production
+      LOG_LEVEL: info
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 1
+        delay: 10s
+      resources:
+        limits:
+          cpus: '1'
+          memory: 256M
+
+  postgres:
+    command: >
+      postgres
+        -c max_connections=200
+        -c shared_buffers=256MB
+        -c effective_cache_size=768MB
+    volumes:
+      - postgres_prod:/var/lib/postgresql/data
+
+volumes:
+  postgres_prod:
