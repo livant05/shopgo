@@ -24,6 +24,14 @@ func queryInt(c *gin.Context, key string, def int) int {
 	return v
 }
 
+func queryFloat(c *gin.Context, key string, def float64) float64 {
+	v, err := strconv.ParseFloat(c.Query(key), 64)
+	if err != nil || v < 0 {
+		return def
+	}
+	return v
+}
+
 func apiErr(c *gin.Context, status int, code, msg string) {
 	c.JSON(status, gin.H{"code": code, "message": msg})
 }
@@ -240,6 +248,9 @@ func (h *ProductHandler) List(c *gin.Context) {
 		CategoryID: c.Query("category_id"),
 		Search:     c.Query("q"),
 		SortBy:     c.DefaultQuery("sort", "name"),
+		InStock:    c.Query("in_stock") == "true",
+		PriceMin:   queryFloat(c, "price_min", 0),
+		PriceMax:   queryFloat(c, "price_max", 0),
 		Page:       queryInt(c, "page", 1),
 		PageSize:   queryInt(c, "page_size", 20),
 	}

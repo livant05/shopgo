@@ -67,6 +67,22 @@ func (r *ProductRepo) List(ctx context.Context, f domain.ProductFilter) (*ports.
 		i++
 	}
 
+	if f.InStock {
+		where = append(where, "COALESCE(inv.quantity - inv.reserved_qty, 0) > 0")
+	}
+
+	if f.PriceMin > 0 {
+		where = append(where, fmt.Sprintf("COALESCE(bp.price, p.base_price) >= $%d", i))
+		args = append(args, f.PriceMin)
+		i++
+	}
+
+	if f.PriceMax > 0 {
+		where = append(where, fmt.Sprintf("COALESCE(bp.price, p.base_price) <= $%d", i))
+		args = append(args, f.PriceMax)
+		i++
+	}
+
 	whereClause := strings.Join(where, " AND ")
 
 	countSQL := fmt.Sprintf(`SELECT COUNT(*) FROM products p %s WHERE %s`, branchJoin, whereClause)
