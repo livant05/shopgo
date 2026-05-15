@@ -74,6 +74,23 @@ type Inventory struct {
 func (i *Inventory) Available() int { return i.Quantity - i.ReservedQty }
 func (i *Inventory) IsLow() bool    { return i.Available() <= i.ReorderPoint }
 
+type InventoryMovement struct {
+	ID             string    `json:"id"`
+	ProductID      string    `json:"product_id"`
+	ProductName    string    `json:"product_name"`
+	ProductSKU     string    `json:"product_sku"`
+	FromBranchID   string    `json:"from_branch_id,omitempty"`
+	FromBranchName string    `json:"from_branch_name,omitempty"`
+	ToBranchID     string    `json:"to_branch_id,omitempty"`
+	ToBranchName   string    `json:"to_branch_name,omitempty"`
+	Quantity       int       `json:"quantity"`
+	Type           string    `json:"type"`
+	Reason         string    `json:"reason"`
+	Note           string    `json:"note,omitempty"`
+	UserID         string    `json:"user_id"`
+	CreatedAt      time.Time `json:"created_at"`
+}
+
 type Coupon struct {
 	ID         string     `json:"id"`
 	Code       string     `json:"code"`

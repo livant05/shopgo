@@ -460,7 +460,24 @@ func (h *InventoryHandler) Transfer(c *gin.Context) {
 }
 
 func (h *InventoryHandler) History(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{"data": []interface{}{}})
+	branchID := c.Query("branch_id")
+	if branchID == "" {
+		branchID = c.GetString("scoped_branch")
+	}
+	data, total, err := h.repo.History(
+		c.Request.Context(),
+		branchID,
+		c.Query("type"),
+		c.Query("from"),
+		c.Query("to"),
+		queryInt(c, "page", 1),
+		queryInt(c, "page_size", 50),
+	)
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"data": data, "total": total})
 }
 
 // ──── OrderHandler ─────────────────────────────────────────

@@ -253,3 +253,90 @@ func (r *InventoryRepo) Transfer(ctx context.Context, cmd ports.TransferCmd) err
 
 	return tx.Commit(ctx)
 }
+
+func (r *InventoryRepo) History(ctx context.Context, branchID, movType, from, to string, page, pageSize int) ([]*domain.InventoryMovement, int, error) {
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 || pageSize > 100 {
+		pageSize = 50
+	}
+	offset := (page - 1) * pageSize
+
+	where := []string{"1=1"}
+	args := []any{}
+	i := 1
+
+	if branchID != "" {
+		where = append(where, fmt.Sprintf("(m.from_branch_id=$%d OR m.to_branch_id=$%d)", i, i+1))
+		args = append(args, branchID, branchID)
+		i += 2
+	}
+	if movType != "" {
+		where = append(where, fmt.Sprintf("m.type=$%d", i))
+		args = append(args, movType)
+		i++
+	}
+	if from != "" {
+		where = append(where, fmt.Sprintf("m.created_at >= $%d::timestamptz", i))
+		args = append(args, from)
+		i++
+	}
+	if to != "" {
+		where = append(where, fmt.Sprintf("m.created_at <= $%d::timestamptz", i))
+		args = append(args, to)
+		i++
+	}
+
+	cond := ""
+	for j, w := range where {
+		if j == 0 {
+			cond = w
+		} else {
+			cond += " AND " + w
+		}
+	}
+
+	var total int
+	err := r.db.QueryRow(ctx,
+		`SELECT COUNT(*) FROM inventory_movements m WHERE `+cond, args...).Scan(&total)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	args = append(args, pageSize, offset)
+	rows, err := r.db.Query(ctx, `
+		SELECT m.id, m.product_id, COALESCE(p.name,''), COALESCE(p.sku,''),
+		       COALESCE(m.from_branch_id::text,''), COALESCE(fb.name,''),
+		       COALESCE(m.to_branch_id::text,''),   COALESCE(tb.name,''),
+		       m.quantity, m.type, m.reason, COALESCE(m.note,''),
+		       m.user_id::text, m.created_at
+		FROM inventory_movements m
+		LEFT JOIN products  p  ON p.id  = m.product_id
+		LEFT JOIN branches  fb ON fb.id = m.from_branch_id
+		LEFT JOIN branches  tb ON tb.id = m.to_branch_id
+		WHERE `+cond+`
+		ORDER BY m.created_at DESC
+		LIMIT $`+fmt.Sprintf("%d", i)+` OFFSET $`+fmt.Sprintf("%d", i+1),
+		args...)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	list := make([]*domain.InventoryMovement, 0)
+	for rows.Next() {
+		var m domain.InventoryMovement
+		if err := rows.Scan(
+			&m.ID, &m.ProductID, &m.ProductName, &m.ProductSKU,
+			&m.FromBranchID, &m.FromBranchName,
+			&m.ToBranchID, &m.ToBranchName,
+			&m.Quantity, &m.Type, &m.Reason, &m.Note,
+			&m.UserID, &m.CreatedAt,
+		); err != nil {
+			return nil, 0, err
+		}
+		list = append(list, &m)
+	}
+	return list, total, rows.Err()
+}

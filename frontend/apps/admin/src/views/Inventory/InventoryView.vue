@@ -6,7 +6,8 @@
         <p class="page-sub">{{ items.length }} registros</p>
       </div>
       <div class="header-actions">
-        <button class="btn-outline" @click="openTransfer()">↔ Transferir</button>
+        <button class="btn-ghost"    @click="openHistory()">📋 Historial</button>
+        <button class="btn-outline"  @click="openTransfer()">↔ Transferir</button>
         <button class="btn-primary"  @click="openAdjust()">± Ajustar</button>
       </div>
     </div>
@@ -53,6 +54,80 @@
         </tbody>
       </table>
     </div>
+
+    <!-- Panel Historial -->
+    <Teleport to="body">
+      <div v-if="historyOpen" class="drawer-backdrop" @click.self="historyOpen=false">
+        <div class="drawer">
+          <div class="drawer-header">
+            <h3>📋 Historial de Movimientos</h3>
+            <button class="modal-close" @click="historyOpen=false">✕</button>
+          </div>
+
+          <!-- Filtros historial -->
+          <div class="hist-filters">
+            <select v-model="hf.type" @change="loadHistory()" class="select-input">
+              <option value="">Todos los tipos</option>
+              <option value="adjustment">Ajuste entrada</option>
+              <option value="reduction">Ajuste salida</option>
+              <option value="transfer">Transferencia</option>
+              <option value="sale">Venta</option>
+              <option value="return">Devolución</option>
+            </select>
+            <select v-model="hf.branch_id" @change="loadHistory()" class="select-input">
+              <option value="">Todas las sucursales</option>
+              <option v-for="b in branches" :key="b.id" :value="b.id">{{ b.name }}</option>
+            </select>
+            <input v-model="hf.from" type="date" class="date-input" @change="loadHistory()" />
+            <input v-model="hf.to"   type="date" class="date-input" @change="loadHistory()" />
+          </div>
+
+          <div v-if="histLoading" class="hist-loading">Cargando…</div>
+          <div v-else-if="history.length === 0" class="hist-empty">Sin movimientos para los filtros seleccionados</div>
+          <div v-else class="hist-table-wrap">
+            <table class="hist-tbl">
+              <thead>
+                <tr>
+                  <th>Fecha</th><th>Tipo</th><th>Producto</th><th>Ruta</th><th>Cant.</th><th>Razón</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="m in history" :key="m.id" class="hist-row">
+                  <td class="hist-date">{{ fmtDate(m.created_at) }}</td>
+                  <td><span class="mov-badge" :class="'mov-'+m.type">{{ movLabel(m.type) }}</span></td>
+                  <td>
+                    <div class="mov-product">{{ m.product_name || m.product_id.slice(0,8)+'…' }}</div>
+                    <div class="mov-sku">{{ m.product_sku }}</div>
+                  </td>
+                  <td class="mov-route">
+                    <template v-if="m.type === 'transfer'">
+                      <span>{{ m.from_branch_name || '—' }}</span>
+                      <span class="route-arrow">→</span>
+                      <span>{{ m.to_branch_name || '—' }}</span>
+                    </template>
+                    <template v-else>{{ m.to_branch_name || m.from_branch_name || '—' }}</template>
+                  </td>
+                  <td :class="m.quantity >= 0 ? 'qty-pos' : 'qty-neg'">
+                    {{ m.quantity >= 0 ? '+' : '' }}{{ m.quantity }}
+                  </td>
+                  <td class="mov-reason">
+                    <div>{{ m.reason }}</div>
+                    <div v-if="m.note" class="mov-note">{{ m.note }}</div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Paginación -->
+          <div class="hist-pagination" v-if="histTotal > hf.page_size">
+            <button class="pag-btn" :disabled="hf.page <= 1" @click="hf.page--; loadHistory()">← Anterior</button>
+            <span class="pag-info">{{ hf.page }} / {{ Math.ceil(histTotal / hf.page_size) }}</span>
+            <button class="pag-btn" :disabled="hf.page * hf.page_size >= histTotal" @click="hf.page++; loadHistory()">Siguiente →</button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
 
     <!-- Modal Ajustar -->
     <div v-if="adjustModal" class="modal-overlay" @click.self="adjustModal=false">
@@ -150,10 +225,23 @@ const branchFilter = ref('')
 const search       = ref('')
 const adjustModal  = ref(false)
 const transferModal = ref(false)
+const historyOpen  = ref(false)
 const adj = ref({ product_id:'', branch_id:'', delta:0, reason:'', note:'' })
 const tr  = ref({ product_id:'', from_branch_id:'', to_branch_id:'', quantity:1, note:'' })
 const adjLoading = ref(false); const adjErr = ref('')
 const trLoading  = ref(false); const trErr  = ref('')
+
+interface Movement {
+  id: string; product_id: string; product_name: string; product_sku: string
+  from_branch_id: string; from_branch_name: string
+  to_branch_id: string; to_branch_name: string
+  quantity: number; type: string; reason: string; note: string
+  user_id: string; created_at: string
+}
+const history    = ref<Movement[]>([])
+const histTotal  = ref(0)
+const histLoading = ref(false)
+const hf = ref({ type:'', branch_id:'', from:'', to:'', page:1, page_size:30 })
 
 const available = (inv: InvItem) => inv.quantity - inv.reserved_qty
 
@@ -204,6 +292,38 @@ async function doTransfer() {
   } catch(e: any) { trErr.value = e.response?.data?.message ?? 'Error' }
   finally { trLoading.value = false }
 }
+
+async function loadHistory() {
+  histLoading.value = true
+  try {
+    const p = new URLSearchParams()
+    if (hf.value.type)      p.set('type',      hf.value.type)
+    if (hf.value.branch_id) p.set('branch_id', hf.value.branch_id)
+    if (hf.value.from)      p.set('from',      hf.value.from)
+    if (hf.value.to)        p.set('to',        hf.value.to)
+    p.set('page',      String(hf.value.page))
+    p.set('page_size', String(hf.value.page_size))
+    const { data } = await api.get(`/admin/inventory/history?${p}`)
+    history.value  = data.data  ?? []
+    histTotal.value = data.total ?? 0
+  } catch(e) { console.error(e) }
+  finally { histLoading.value = false }
+}
+
+function openHistory() {
+  hf.value = { type:'', branch_id:'', from:'', to:'', page:1, page_size:30 }
+  historyOpen.value = true
+  loadHistory()
+}
+
+const movLabel = (t: string) => ({
+  adjustment: 'Entrada', reduction: 'Salida', transfer: 'Transferencia',
+  sale: 'Venta', return: 'Devolución',
+}[t] ?? t)
+
+const fmtDate = (s: string) => new Date(s).toLocaleString('es-MX', {
+  dateStyle:'short', timeStyle:'short',
+})
 
 onMounted(() => Promise.all([load(), loadBranches()]))
 </script>
@@ -256,4 +376,38 @@ onMounted(() => Promise.all([load(), loadBranches()]))
 .field input:focus { outline:none; border-color:#38bdf8; }
 .field-row     { display:flex; gap:12px; }
 .err-msg       { color:#f87171; font-size:12px; padding-bottom:4px; }
+
+/* Drawer historial */
+.drawer-backdrop { position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:200; display:flex; justify-content:flex-end; }
+.drawer { background:#0f1623; border-left:1px solid #2d3a52; width:820px; max-width:95vw; height:100vh; display:flex; flex-direction:column; }
+.drawer-header { display:flex; align-items:center; justify-content:space-between; padding:20px 24px; border-bottom:1px solid #2d3a52; flex-shrink:0; }
+.drawer-header h3 { font-size:16px; color:#eaf0f7; margin:0; }
+.hist-filters { display:flex; gap:8px; flex-wrap:wrap; padding:16px 24px; border-bottom:1px solid #1a2235; flex-shrink:0; }
+.date-input   { background:#1c2333; border:1px solid #2d3a52; color:#d6dfe8; padding:8px 10px; border-radius:7px; font-size:12px; }
+.hist-loading, .hist-empty { padding:40px; text-align:center; color:#5a6a87; font-size:13px; }
+.hist-table-wrap { flex:1; overflow-y:auto; }
+.hist-tbl { width:100%; border-collapse:collapse; font-size:12px; }
+.hist-tbl thead th { background:#1a2235; color:#8494ac; padding:9px 12px; text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.5px; position:sticky; top:0; }
+.hist-row { border-top:1px solid #1a2235; }
+.hist-row:hover { background:rgba(56,189,248,.03); }
+.hist-row td { padding:9px 12px; color:#d6dfe8; vertical-align:top; }
+.hist-date { color:#5a6a87; white-space:nowrap; font-size:11px; }
+.mov-badge { display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:600; white-space:nowrap; }
+.mov-adjustment { background:rgba(74,222,128,.1); color:#4ade80; }
+.mov-reduction  { background:rgba(248,113,113,.1); color:#f87171; }
+.mov-transfer   { background:rgba(56,189,248,.1); color:#38bdf8; }
+.mov-sale       { background:rgba(99,102,241,.1); color:#818cf8; }
+.mov-return     { background:rgba(251,146,60,.1); color:#fb923c; }
+.mov-product { font-weight:500; color:#eaf0f7; }
+.mov-sku     { font-size:11px; color:#5a6a87; font-family:monospace; }
+.mov-route   { font-size:12px; color:#8494ac; white-space:nowrap; }
+.route-arrow { margin:0 4px; color:#5a6a87; }
+.qty-pos { color:#4ade80; font-weight:700; }
+.qty-neg { color:#f87171; font-weight:700; }
+.mov-reason { color:#8494ac; }
+.mov-note   { font-size:11px; color:#5a6a87; margin-top:2px; }
+.hist-pagination { display:flex; align-items:center; justify-content:center; gap:16px; padding:16px; border-top:1px solid #1a2235; flex-shrink:0; }
+.pag-btn  { background:none; border:1px solid #2d3a52; color:#8494ac; padding:7px 14px; border-radius:6px; font-size:12px; cursor:pointer; }
+.pag-btn:disabled { opacity:.4; cursor:not-allowed; }
+.pag-info { font-size:12px; color:#5a6a87; }
 </style>

@@ -79,6 +79,7 @@ type InventoryRepository interface {
 	Commit(ctx context.Context, reservationID string) error
 	Release(ctx context.Context, reservationID string) error
 	Transfer(ctx context.Context, cmd TransferCmd) error
+	History(ctx context.Context, branchID, movType, from, to string, page, pageSize int) ([]*domain.InventoryMovement, int, error)
 }
 
 type OrderRepository interface {

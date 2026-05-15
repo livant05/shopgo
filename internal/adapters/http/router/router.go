@@ -97,6 +97,7 @@ func Setup(r *gin.Engine, d *Deps) {
 		adm.GET("/inventory", d.Inventory.ListAll)
 		adm.PATCH("/inventory", d.Inventory.Adjust)
 		adm.POST("/inventory/transfer", d.Inventory.Transfer)
+		adm.GET("/inventory/history", d.Inventory.History)
 
 		// Sucursales
 		adm.GET("/branches", d.Branch.List)
