@@ -64,6 +64,7 @@ type ProductRepository interface {
 	GetByID(ctx context.Context, id string) (*domain.Product, error)
 	GetWithPrice(ctx context.Context, id, branchID string) (*domain.Product, error)
 	List(ctx context.Context, f domain.ProductFilter) (*Page[domain.Product], error)
+	ListTags(ctx context.Context) ([]string, error)
 	Create(ctx context.Context, p *domain.Product) (*domain.Product, error)
 	Update(ctx context.Context, p *domain.Product) (*domain.Product, error)
 	SetActive(ctx context.Context, id string, active bool) error

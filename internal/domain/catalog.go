@@ -59,6 +59,7 @@ type ProductFilter struct {
 	InStock    bool
 	PriceMin   float64
 	PriceMax   float64
+	Tag        string
 	Page       int
 	PageSize   int
 }

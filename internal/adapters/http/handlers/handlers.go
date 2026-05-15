@@ -304,6 +304,7 @@ func (h *ProductHandler) List(c *gin.Context) {
 		InStock:    c.Query("in_stock") == "true",
 		PriceMin:   queryFloat(c, "price_min", 0),
 		PriceMax:   queryFloat(c, "price_max", 0),
+		Tag:        c.Query("tag"),
 		Page:       queryInt(c, "page", 1),
 		PageSize:   queryInt(c, "page_size", 20),
 	}
@@ -402,6 +403,15 @@ func (h *ProductHandler) BulkImport(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"upserted": n})
+}
+
+func (h *ProductHandler) ListTags(c *gin.Context) {
+	tags, err := h.repo.ListTags(c.Request.Context())
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"data": tags})
 }
 
 func (h *ProductHandler) ListCategories(c *gin.Context) {

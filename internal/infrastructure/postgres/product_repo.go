@@ -83,6 +83,12 @@ func (r *ProductRepo) List(ctx context.Context, f domain.ProductFilter) (*ports.
 		i++
 	}
 
+	if f.Tag != "" {
+		where = append(where, fmt.Sprintf("$%d = ANY(p.tags)", i))
+		args = append(args, f.Tag)
+		i++
+	}
+
 	whereClause := strings.Join(where, " AND ")
 
 	countSQL := fmt.Sprintf(`SELECT COUNT(*) FROM products p %s WHERE %s`, branchJoin, whereClause)
@@ -333,6 +339,30 @@ func (r *ProductRepo) SetCategoryActive(ctx context.Context, id string, active b
 	_, err := r.db.Exec(ctx,
 		`UPDATE categories SET is_active=$2 WHERE id=$1`, id, active)
 	return err
+}
+
+func (r *ProductRepo) ListTags(ctx context.Context) ([]string, error) {
+	rows, err := r.db.Query(ctx, `
+		SELECT DISTINCT unnest(tags) AS tag
+		FROM products
+		WHERE is_active = true AND array_length(tags, 1) > 0
+		ORDER BY tag`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var tags []string
+	for rows.Next() {
+		var t string
+		if err := rows.Scan(&t); err != nil {
+			return nil, err
+		}
+		tags = append(tags, t)
+	}
+	if tags == nil {
+		tags = []string{}
+	}
+	return tags, rows.Err()
 }
 
 func (r *ProductRepo) scanProduct(row rowScanner) (*domain.Product, error) {
