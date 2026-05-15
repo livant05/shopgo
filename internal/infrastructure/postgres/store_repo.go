@@ -16,10 +16,13 @@ func (r *StoreRepo) Get(ctx context.Context) (*domain.StoreConfig, error) {
 	var sc domain.StoreConfig
 	err := r.db.QueryRow(ctx, `
 		SELECT store_name, COALESCE(logo_url,''), currency, tax_rate, tax_inclusive,
-		       contact_email, COALESCE(support_phone,'')
+		       contact_email, COALESCE(support_phone,''),
+		       COALESCE(stripe_public_key,''), COALESCE(social_instagram,''),
+		       COALESCE(social_facebook,''), COALESCE(social_whatsapp,'')
 		FROM store_config LIMIT 1`).
 		Scan(&sc.StoreName, &sc.LogoURL, &sc.Currency, &sc.TaxRate, &sc.TaxInclusive,
-			&sc.ContactEmail, &sc.SupportPhone)
+			&sc.ContactEmail, &sc.SupportPhone,
+			&sc.StripePublicKey, &sc.SocialInstagram, &sc.SocialFacebook, &sc.SocialWhatsapp)
 	if err != nil {
 		return &domain.StoreConfig{StoreName: "Mi Tienda", Currency: "MXN", TaxRate: 0.16}, nil
 	}
@@ -30,9 +33,12 @@ func (r *StoreRepo) Update(ctx context.Context, sc *domain.StoreConfig) error {
 	_, err := r.db.Exec(ctx, `
 		UPDATE store_config
 		SET store_name=$1, logo_url=$2, currency=$3, tax_rate=$4,
-		    tax_inclusive=$5, contact_email=$6, support_phone=$7, updated_at=NOW()`,
+		    tax_inclusive=$5, contact_email=$6, support_phone=$7,
+		    stripe_public_key=$8, social_instagram=$9,
+		    social_facebook=$10, social_whatsapp=$11, updated_at=NOW()`,
 		sc.StoreName, sc.LogoURL, sc.Currency, sc.TaxRate,
-		sc.TaxInclusive, sc.ContactEmail, sc.SupportPhone)
+		sc.TaxInclusive, sc.ContactEmail, sc.SupportPhone,
+		sc.StripePublicKey, sc.SocialInstagram, sc.SocialFacebook, sc.SocialWhatsapp)
 	return err
 }
 

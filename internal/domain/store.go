@@ -40,4 +40,7 @@ type StoreConfig struct {
 	ContactEmail    string  `json:"contact_email"`
 	SupportPhone    string  `json:"support_phone,omitempty"`
 	StripePublicKey string  `json:"stripe_public_key,omitempty"`
+	SocialInstagram string  `json:"social_instagram,omitempty"`
+	SocialFacebook  string  `json:"social_facebook,omitempty"`
+	SocialWhatsapp  string  `json:"social_whatsapp,omitempty"`
 }

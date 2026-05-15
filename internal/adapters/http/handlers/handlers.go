@@ -643,7 +643,8 @@ func (h *PaymentHandler) ValidateCoupon(c *gin.Context) {
 }
 
 func (h *PaymentHandler) GetConfig(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{"stripe_public_key": ""})
+	configured := h.svc != nil
+	c.JSON(http.StatusOK, gin.H{"stripe_configured": configured})
 }
 
 func (h *PaymentHandler) UpdateConfig(c *gin.Context) {
