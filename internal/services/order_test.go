@@ -22,7 +22,7 @@ func (m *mockOrders) GetByID(ctx context.Context, id string) (*domain.Order, err
 	if m.getFn != nil { return m.getFn(ctx, id) }
 	return &domain.Order{Status: domain.StatusPending}, nil
 }
-func (m *mockOrders) List(_ context.Context, _ string, _ ports.OrderFilter) (*ports.Page[domain.Order], error) { return &ports.Page[domain.Order]{}, nil }
+func (m *mockOrders) List(_ context.Context, _ ports.OrderFilter) (*ports.Page[domain.Order], error) { return &ports.Page[domain.Order]{}, nil }
 func (m *mockOrders) Create(ctx context.Context, o *domain.Order) (*domain.Order, error) { return m.createFn(ctx, o) }
 func (m *mockOrders) UpdateStatus(ctx context.Context, id string, s domain.OrderStatus) error {
 	if m.updateFn != nil { return m.updateFn(ctx, id, s) }
