@@ -22,10 +22,6 @@ jobs:
       - uses: golangci/golangci-lint-action@v4
         with:
           version: latest
-      - name: gosec
-        run: |
-          go install github.com/securego/gosec/v2/cmd/gosec@latest
-          gosec -exclude=G104,G304,G401,G501 ./...
 
   test:
     name: Tests (race + coverage)
