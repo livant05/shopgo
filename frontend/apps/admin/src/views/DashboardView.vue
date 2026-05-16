@@ -20,6 +20,32 @@
       </div>
     </div>
 
+    <!-- Cotizaciones pendientes -->
+    <div class="panel-card quotes-widget" v-if="pendingQuotes.length > 0 || pendingQuotesLoading">
+      <div class="panel-header">
+        <h3 class="section-title">📄 Cotizaciones pendientes
+          <span v-if="!pendingQuotesLoading && pendingTotal > 0" class="q-badge">{{ pendingTotal }}</span>
+        </h3>
+        <router-link to="/quotes?status=pending" class="panel-link">Ver todas →</router-link>
+      </div>
+      <div v-if="pendingQuotesLoading" class="panel-loading">Cargando…</div>
+      <div v-else-if="pendingQuotes.length === 0" class="panel-empty">Sin cotizaciones pendientes</div>
+      <div v-else class="q-list">
+        <div v-for="q in pendingQuotes" :key="q.id" class="q-row">
+          <div class="q-info">
+            <span class="q-num">#{{ q.quote_number }}</span>
+            <span class="q-name">{{ q.customer_name }}</span>
+          </div>
+          <div class="q-meta">
+            <span class="q-email">{{ q.customer_email }}</span>
+            <span class="q-date">{{ fmtDate(q.created_at) }}</span>
+          </div>
+          <div class="q-total">{{ fmtMXN(q.total) }}</div>
+          <router-link :to="'/quotes'" class="q-link">Ver →</router-link>
+        </div>
+      </div>
+    </div>
+
     <!-- Gráfica de ventas diarias -->
     <div class="chart-card">
       <div class="chart-header">
@@ -151,6 +177,11 @@ const topProductsLoading = ref(true)
 const topCustomers        = ref<any[]>([])
 const topCustomersLoading = ref(true)
 
+// Pending quotes widget
+const pendingQuotes        = ref<any[]>([])
+const pendingTotal         = ref(0)
+const pendingQuotesLoading = ref(true)
+
 // Hourly
 const hourlyLoading = ref(true)
 const hourlyOption  = ref<any>({})
@@ -158,6 +189,9 @@ const hourlyOption  = ref<any>({})
 // ── Formatters ────────────────────────────────────────────────────────────────
 const fmtMXN = (n: number) =>
   (n ?? 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 })
+
+const fmtDate = (s: string) =>
+  new Date(s).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' })
 
 // ── Charts ────────────────────────────────────────────────────────────────────
 function buildSalesChart(days: { day: string; orders: number; revenue: number }[]) {
@@ -317,6 +351,16 @@ async function loadTopCustomers() {
   finally { topCustomersLoading.value = false }
 }
 
+async function loadPendingQuotes() {
+  pendingQuotesLoading.value = true
+  try {
+    const res = await api.get('/admin/quotes', { params: { status: 'pending', page_size: 5 } })
+    pendingQuotes.value = res.data.data ?? []
+    pendingTotal.value  = res.data.total ?? pendingQuotes.value.length
+  } catch {}
+  finally { pendingQuotesLoading.value = false }
+}
+
 async function loadHourly() {
   hourlyLoading.value = true
   try {
@@ -334,6 +378,7 @@ onMounted(() => {
   loadTopProducts()
   loadTopCustomers()
   loadHourly()
+  loadPendingQuotes()
 })
 </script>
 
@@ -392,6 +437,24 @@ onMounted(() => {
 .rank-stats { text-align: right; flex-shrink: 0; }
 .rank-primary   { font-size: 13px; font-weight: 700; color: #4ade80; }
 .rank-secondary { font-size: 11px; color: #5a6a87; }
+
+/* Quotes widget */
+.quotes-widget { gap: 0; }
+.panel-link { font-size: 12px; color: #4fc3f7; text-decoration: none; white-space: nowrap; }
+.panel-link:hover { color: #38bdf8; }
+.q-badge { display: inline-flex; align-items: center; justify-content: center; background: #f59e0b; color: #0f172a; font-size: 11px; font-weight: 800; border-radius: 999px; padding: 1px 7px; min-width: 20px; margin-left: 8px; }
+.q-list { display: flex; flex-direction: column; gap: 2px; }
+.q-row  { display: flex; align-items: center; gap: 12px; padding: 10px; border-radius: 7px; transition: background .1s; }
+.q-row:hover { background: rgba(245,158,11,.05); }
+.q-info { display: flex; flex-direction: column; min-width: 0; flex: 0 0 auto; width: 120px; }
+.q-num  { font-size: 12px; color: #f59e0b; font-weight: 700; font-family: monospace; }
+.q-name { font-size: 13px; color: #d6dfe8; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.q-meta { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.q-email { font-size: 11px; color: #5a6a87; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.q-date  { font-size: 11px; color: #3d5a7a; }
+.q-total { font-size: 13px; font-weight: 700; color: #4ade80; flex-shrink: 0; min-width: 80px; text-align: right; }
+.q-link  { font-size: 12px; color: #4fc3f7; text-decoration: none; flex-shrink: 0; padding-left: 8px; }
+.q-link:hover { color: #38bdf8; }
 
 /* Section title & alerts */
 .section-title { font-size: 15px; font-weight: 600; color: #d6dfe8; margin: 0; }
