@@ -3,17 +3,20 @@ import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { api } from '../api/client'
 import { useCartStore } from '../stores/cart'
+import { useQuoteStore } from '../stores/quote'
 import type { Product } from '../types'
 
 const route  = useRoute()
 const router = useRouter()
 const cart   = useCartStore()
+const quote  = useQuoteStore()
 
 const product  = ref<Product | null>(null)
 const loading  = ref(true)
 const qty      = ref(1)
 const imgIndex = ref(0)
 const added    = ref(false)
+const quoted   = ref(false)
 
 onMounted(async () => {
   try {
@@ -47,6 +50,19 @@ function addToCart() {
   }
   added.value = true
   setTimeout(() => added.value = false, 2000)
+}
+
+function addToQuote() {
+  if (!product.value) return
+  quote.add({
+    product_id: product.value.id,
+    sku:        product.value.sku,
+    name:       product.value.name,
+    unit_price: product.value.branch_price ?? product.value.base_price,
+    image_url:  images.value.find(x => x.is_main)?.url ?? images.value[0]?.url ?? '',
+  })
+  quoted.value = true
+  setTimeout(() => quoted.value = false, 2000)
 }
 </script>
 
@@ -127,6 +143,11 @@ function addToCart() {
           </button>
         </div>
 
+        <!-- Quote action -->
+        <button class="btn-quote-add" @click="addToQuote">
+          {{ quoted ? '✓ Agregado a cotización' : '📄 Agregar a cotización' }}
+        </button>
+
         <router-link v-if="added" to="/cart" class="btn-go-cart">Ver carrito →</router-link>
       </div>
     </div>
@@ -188,6 +209,13 @@ function addToCart() {
 .btn-add:hover:not(:disabled) { background: #1e40af; }
 .btn-add:disabled { background: #e2e8f0; color: #94a3b8; cursor: not-allowed; }
 .btn-add.success { background: #10b981; }
+
+.btn-quote-add {
+  width: 100%; padding: .65rem 1rem; border: 1.5px solid #f59e0b; border-radius: 10px;
+  background: #fffbeb; color: #92400e; font-size: .95rem; font-weight: 600; cursor: pointer;
+  transition: all .15s;
+}
+.btn-quote-add:hover { background: #fef3c7; border-color: #d97706; }
 
 .btn-go-cart {
   display: inline-block; margin-top: .25rem; color: #3b82f6;

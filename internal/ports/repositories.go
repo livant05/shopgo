@@ -112,6 +112,11 @@ type OrderFilter struct {
 	PageSize     int
 }
 
+type QuoteRepository interface {
+	Create(ctx context.Context, q *domain.Quote) (*domain.Quote, error)
+	GetByID(ctx context.Context, id string) (*domain.Quote, error)
+}
+
 type ReportRepository interface {
 	Revenue(ctx context.Context, from, to string) (*RevenueMetrics, error)
 	SalesByBranch(ctx context.Context, from, to string) ([]*BranchSales, error)

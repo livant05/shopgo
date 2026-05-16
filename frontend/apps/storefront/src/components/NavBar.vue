@@ -3,11 +3,14 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useCartStore } from '../stores/cart'
+import { useQuoteStore } from '../stores/quote'
 import { api } from '../api/client'
+import QuoteDrawer from './QuoteDrawer.vue'
 
 const router = useRouter()
 const auth   = useAuthStore()
 const cart   = useCartStore()
+const quote  = useQuoteStore()
 
 const storeName  = ref('Mi Tienda')
 const menuOpen   = ref(false)
@@ -49,6 +52,12 @@ function logout() {
       <nav class="actions">
         <router-link to="/catalog" class="nav-link">Catálogo</router-link>
 
+        <!-- Quote -->
+        <button class="cart-btn quote-btn" @click="quote.isOpen = true" title="Mi cotización">
+          📄
+          <span v-if="quote.count > 0" class="badge badge-amber">{{ quote.count }}</span>
+        </button>
+
         <!-- Cart -->
         <router-link to="/cart" class="cart-btn">
           🛒
@@ -76,9 +85,13 @@ function logout() {
       <button class="hamburger" @click="menuOpen = !menuOpen">☰</button>
     </div>
 
+  <!-- Quote drawer (teleports to body) -->
+  <QuoteDrawer />
+
     <!-- Mobile menu -->
     <div v-if="menuOpen" class="mobile-menu">
       <router-link to="/catalog" @click="menuOpen = false">Catálogo</router-link>
+      <button @click="quote.isOpen = true; menuOpen = false">📄 Cotización ({{ quote.count }})</button>
       <router-link to="/cart"    @click="menuOpen = false">Carrito ({{ cart.count }})</router-link>
       <template v-if="auth.isAuth">
         <router-link to="/profile" @click="menuOpen = false">Mi perfil</router-link>
@@ -137,6 +150,8 @@ function logout() {
   font-size: .65rem; font-weight: 700; padding: 1px 5px; min-width: 18px;
   text-align: center;
 }
+.badge-amber { background: #f59e0b; }
+.quote-btn { background: none; border: none; cursor: pointer; color: #f1f5f9; font-size: 1.3rem; }
 .user-menu { position: relative; }
 .user-btn {
   background: none; border: 1px solid #475569; color: #f1f5f9;

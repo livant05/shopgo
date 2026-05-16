@@ -252,6 +252,110 @@ func (h *AuthHandler) ChangePassword(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
+// ──── QuoteHandler ──────────────────────────────────────────
+
+type quoteRepository interface {
+	Create(ctx context.Context, q *domain.Quote) (*domain.Quote, error)
+	GetByID(ctx context.Context, id string) (*domain.Quote, error)
+}
+
+type quoteStoreRepository interface {
+	Get(ctx context.Context) (*domain.StoreConfig, error)
+}
+
+type QuoteHandler struct {
+	repo  quoteRepository
+	store quoteStoreRepository
+}
+
+func NewQuoteHandler(repo quoteRepository, store quoteStoreRepository) *QuoteHandler {
+	return &QuoteHandler{repo, store}
+}
+
+func (h *QuoteHandler) Create(c *gin.Context) {
+	var body struct {
+		Items []struct {
+			ProductID string  `json:"product_id"`
+			SKU       string  `json:"sku"`
+			Name      string  `json:"name"`
+			Qty       int     `json:"qty"`
+			UnitPrice float64 `json:"unit_price"`
+		} `json:"items" binding:"required,min=1"`
+		CustomerName  string `json:"customer_name"`
+		CustomerEmail string `json:"customer_email"`
+		CustomerPhone string `json:"customer_phone"`
+		Note          string `json:"note"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		apiErr(c, http.StatusBadRequest, "BAD_REQUEST", err.Error())
+		return
+	}
+
+	sc, err := h.store.Get(c.Request.Context())
+	if err != nil {
+		apiErr(c, http.StatusInternalServerError, "INTERNAL_ERROR", "error cargando configuración")
+		return
+	}
+
+	taxRate := sc.TaxRate
+	if taxRate <= 0 {
+		taxRate = 0.07 // ITBMS Panamá por defecto
+	}
+
+	var subtotal float64
+	items := make([]domain.QuoteItem, 0, len(body.Items))
+	for _, it := range body.Items {
+		if it.Qty <= 0 {
+			it.Qty = 1
+		}
+		sub := it.UnitPrice * float64(it.Qty)
+		subtotal += sub
+		items = append(items, domain.QuoteItem{
+			ProductID: it.ProductID,
+			SKU:       it.SKU,
+			Name:      it.Name,
+			Qty:       it.Qty,
+			UnitPrice: it.UnitPrice,
+			Subtotal:  sub,
+		})
+	}
+
+	taxAmount := subtotal * taxRate
+	total := subtotal + taxAmount
+
+	q := &domain.Quote{
+		Items:         items,
+		Subtotal:      subtotal,
+		TaxRate:       taxRate,
+		TaxAmount:     taxAmount,
+		Total:         total,
+		Currency:      sc.Currency,
+		StoreName:     sc.StoreName,
+		ContactEmail:  sc.ContactEmail,
+		SupportPhone:  sc.SupportPhone,
+		CustomerName:  body.CustomerName,
+		CustomerEmail: body.CustomerEmail,
+		CustomerPhone: body.CustomerPhone,
+		Note:          body.Note,
+	}
+
+	created, err := h.repo.Create(c.Request.Context(), q)
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
+	c.JSON(http.StatusCreated, created)
+}
+
+func (h *QuoteHandler) Get(c *gin.Context) {
+	q, err := h.repo.GetByID(c.Request.Context(), c.Param("id"))
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, q)
+}
+
 // ──── StoreHandler ──────────────────────────────────────────
 
 type storeRepository interface {
