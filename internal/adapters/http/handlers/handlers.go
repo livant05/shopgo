@@ -263,6 +263,7 @@ type quoteRepository interface {
 	UpdateStatus(ctx context.Context, id, status, note string) (*domain.Quote, error)
 	UpdateItems(ctx context.Context, id string, items []domain.QuoteItem, subtotal, taxAmount, total float64) (*domain.Quote, error)
 	ExpireOverdue(ctx context.Context) (int, error)
+	Stats(ctx context.Context) (*ports.QuoteStats, error)
 	List(ctx context.Context, f ports.QuoteFilter) (*ports.Page[domain.Quote], error)
 }
 
@@ -473,6 +474,15 @@ func (h *QuoteHandler) UpdateStatus(c *gin.Context) {
 		})
 	}()
 	c.JSON(http.StatusOK, q)
+}
+
+func (h *QuoteHandler) Stats(c *gin.Context) {
+	s, err := h.repo.Stats(c.Request.Context())
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, s)
 }
 
 func (h *QuoteHandler) NotifyCustomer(c *gin.Context) {

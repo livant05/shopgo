@@ -33,6 +33,10 @@
         </div>
         <div class="banner-right">
           <span v-if="isExpired" class="tag-expired">Vencida</span>
+          <button v-if="isExpired || quote.status === 'rejected'"
+                  class="btn-requote" @click="reQuote">
+            🔄 Solicitar nueva cotización
+          </button>
           <button v-else-if="quote.status === 'accepted'"
                   class="btn-order" @click="loadIntoCart">
             Proceder al pago →
@@ -140,6 +144,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { api } from '../api/client'
 import { useCartStore } from '../stores/cart'
+import { useQuoteStore } from '../stores/quote'
 
 interface QuoteItem {
   product_id: string
@@ -173,9 +178,10 @@ interface Quote {
   expires_at?: string
 }
 
-const route   = useRoute()
-const router  = useRouter()
-const cart    = useCartStore()
+const route      = useRoute()
+const router     = useRouter()
+const cart       = useCartStore()
+const quoteStore = useQuoteStore()
 const quote   = ref<Quote | null>(null)
 const loading = ref(true)
 const copied  = ref(false)
@@ -229,6 +235,16 @@ async function copyLink() {
     copied.value = true
     setTimeout(() => copied.value = false, 2000)
   } catch {}
+}
+
+function reQuote() {
+  if (!quote.value) return
+  quoteStore.clear()
+  quote.value.items.forEach(item => {
+    quoteStore.add({ product_id: item.product_id, name: item.name, sku: item.sku, unit_price: item.unit_price })
+    if (item.qty > 1) quoteStore.setQty(item.product_id, item.qty)
+  })
+  quoteStore.isOpen = true
 }
 
 function loadIntoCart() {
@@ -296,6 +312,12 @@ onMounted(async () => {
   transition: background .15s;
 }
 .btn-order:hover { background: #15803d; }
+.btn-requote {
+  background: #fff; color: #1d4ed8; border: 1px solid #bfdbfe; border-radius: .5rem;
+  padding: .55rem 1.1rem; font-size: .85rem; font-weight: 700; cursor: pointer;
+  transition: background .15s;
+}
+.btn-requote:hover { background: #eff6ff; }
 
 /* Quote document */
 .quote-doc {

@@ -80,6 +80,29 @@ func (r *QuoteRepo) ExpireOverdue(ctx context.Context) (int, error) {
 	return int(tag.RowsAffected()), nil
 }
 
+func (r *QuoteRepo) Stats(ctx context.Context) (*ports.QuoteStats, error) {
+	var s ports.QuoteStats
+	err := r.db.QueryRow(ctx, `
+		SELECT
+			COUNT(*) FILTER (WHERE status = 'pending')  AS pending,
+			COUNT(*) FILTER (WHERE status = 'accepted') AS accepted,
+			COUNT(*) FILTER (WHERE status = 'rejected') AS rejected,
+			COUNT(*)                                     AS total,
+			COALESCE(SUM(total) FILTER (WHERE status = 'accepted'), 0) AS accepted_value,
+			COALESCE(SUM(total) FILTER (WHERE status = 'pending'),  0) AS pipeline_value
+		FROM quotes`).Scan(
+		&s.Pending, &s.Accepted, &s.Rejected, &s.Total,
+		&s.AcceptedValue, &s.PipelineValue)
+	if err != nil {
+		return nil, err
+	}
+	resolved := s.Accepted + s.Rejected
+	if resolved > 0 {
+		s.ConversionRate = float64(s.Accepted) / float64(resolved) * 100
+	}
+	return &s, nil
+}
+
 func (r *QuoteRepo) List(ctx context.Context, f ports.QuoteFilter) (*ports.Page[domain.Quote], error) {
 	if f.PageSize <= 0 {
 		f.PageSize = 20

@@ -146,6 +146,7 @@ func Setup(r *gin.Engine, d *Deps) {
 		// Cotizaciones
 		adm.GET("/quotes", d.Quote.List)
 		adm.POST("/quotes", d.Quote.Create)
+		adm.GET("/quotes/stats", d.Quote.Stats)
 		adm.GET("/quotes/export", d.Quote.Export)
 		adm.PUT("/quotes/:id/items", d.Quote.UpdateItems)
 		adm.POST("/quotes/:id/notify", d.Quote.NotifyCustomer)

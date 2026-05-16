@@ -42,11 +42,24 @@ interface Page {
   has_prev: boolean
 }
 
+interface QuoteStats {
+  pending: number
+  accepted: number
+  rejected: number
+  total: number
+  accepted_value: number
+  pipeline_value: number
+  conversion_rate: number
+}
+
 const STATUS_LABEL: Record<string, string> = {
   pending:  'Pendiente',
   accepted: 'Aceptada',
   rejected: 'Rechazada',
 }
+
+const stats      = ref<QuoteStats | null>(null)
+const statsLoading = ref(true)
 
 const quotes     = ref<Quote[]>([])
 const total      = ref(0)
@@ -198,6 +211,11 @@ function fmt(v: number) {
   return v.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
+function fmtCurrency(v: number) {
+  if (v >= 1000) return `B/. ${(v / 1000).toFixed(1)}k`
+  return `B/. ${v.toLocaleString('es-PA', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
+}
+
 function fmtDate(d: string) {
   return new Date(d).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })
 }
@@ -233,7 +251,16 @@ watch(search, scheduleLoad)
 watch([statusFilter, from, to], () => load(true))
 watch(page, () => load(false))
 
-onMounted(() => load())
+async function loadStats() {
+  statsLoading.value = true
+  try {
+    const { data } = await api.get<QuoteStats>('/admin/quotes/stats')
+    stats.value = data
+  } catch {}
+  finally { statsLoading.value = false }
+}
+
+onMounted(() => { load(); loadStats() })
 </script>
 
 <template>
@@ -248,6 +275,34 @@ onMounted(() => load())
         <button class="btn-export" :disabled="exporting" @click="exportCSV()">
           {{ exporting ? 'Exportando…' : '⬇ Exportar CSV' }}
         </button>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div v-if="!statsLoading && stats" class="stats-bar">
+      <div class="stat-chip stat-pending">
+        <span class="stat-val">{{ stats.pending }}</span>
+        <span class="stat-lbl">Pendientes</span>
+      </div>
+      <div class="stat-chip stat-accepted">
+        <span class="stat-val">{{ stats.accepted }}</span>
+        <span class="stat-lbl">Aceptadas</span>
+      </div>
+      <div class="stat-chip stat-rejected">
+        <span class="stat-val">{{ stats.rejected }}</span>
+        <span class="stat-lbl">Rechazadas</span>
+      </div>
+      <div class="stat-chip stat-value">
+        <span class="stat-val">{{ fmtCurrency(stats.accepted_value) }}</span>
+        <span class="stat-lbl">Valor aceptado</span>
+      </div>
+      <div class="stat-chip stat-pipeline">
+        <span class="stat-val">{{ fmtCurrency(stats.pipeline_value) }}</span>
+        <span class="stat-lbl">Pipeline</span>
+      </div>
+      <div class="stat-chip stat-conversion">
+        <span class="stat-val">{{ stats.conversion_rate.toFixed(1) }}%</span>
+        <span class="stat-lbl">Conversión</span>
       </div>
     </div>
 
@@ -514,6 +569,21 @@ onMounted(() => load())
 }
 .btn-export:hover:not(:disabled) { background: rgba(56,189,248,.2); }
 .btn-export:disabled { opacity: .5; cursor: not-allowed; }
+
+/* Stats bar */
+.stats-bar { display: flex; gap: .65rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
+.stat-chip {
+  display: flex; flex-direction: column; gap: .15rem;
+  padding: .6rem 1rem; border-radius: 10px; border: 1px solid transparent; min-width: 90px;
+}
+.stat-val { font-size: 1.15rem; font-weight: 800; line-height: 1; }
+.stat-lbl { font-size: .68rem; font-weight: 600; text-transform: uppercase; letter-spacing: .07em; opacity: .75; }
+.stat-pending   { background: rgba(251,191,36,.08); border-color: rgba(251,191,36,.2); color: #fbbf24; }
+.stat-accepted  { background: rgba(16,185,129,.08); border-color: rgba(16,185,129,.2); color: #10b981; }
+.stat-rejected  { background: rgba(239,68,68,.07);  border-color: rgba(239,68,68,.18); color: #f87171; }
+.stat-value     { background: rgba(56,189,248,.08); border-color: rgba(56,189,248,.2); color: #38bdf8; }
+.stat-pipeline  { background: rgba(99,102,241,.08); border-color: rgba(99,102,241,.2); color: #a5b4fc; }
+.stat-conversion { background: rgba(52,211,153,.08); border-color: rgba(52,211,153,.2); color: #34d399; }
 
 /* Filtros */
 .filters { display: flex; gap: 1rem; margin-bottom: 1.25rem; flex-wrap: wrap; align-items: center; }
