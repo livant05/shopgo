@@ -18,6 +18,7 @@
           class="sb-link" :class="{ 'sb-link-hidden': !auth.hasRole(item.minRole) }">
           <span class="sb-icon">{{ item.icon }}</span>
           <span v-if="!collapsed" class="sb-label">{{ item.label }}</span>
+          <span v-if="item.to === '/quotes' && pendingQuotes > 0" class="sb-badge">{{ pendingQuotes }}</span>
         </router-link>
       </nav>
 
@@ -45,10 +46,12 @@
     <!-- Notification toasts -->
     <div class="toast-stack">
       <TransitionGroup name="toast">
-        <div v-for="n in notifications" :key="n.id" class="toast" @click="dismiss(n.id)">
-          <span class="toast-icon">🛒</span>
+        <div v-for="n in notifications" :key="n.id"
+             class="toast" :class="'toast-' + n.type"
+             @click="dismiss(n.id)">
+          <span class="toast-icon">{{ n.type === 'quote' ? '📄' : '🛒' }}</span>
           <div class="toast-body">
-            <p class="toast-title">Nuevo pedido</p>
+            <p class="toast-title">{{ n.type === 'quote' ? 'Nueva cotización' : 'Nuevo pedido' }}</p>
             <p class="toast-msg">{{ n.message }}</p>
           </div>
           <button class="toast-close">✕</button>
@@ -71,7 +74,7 @@ const router    = useRouter()
 const collapsed = ref(false)
 const storeName = import.meta.env.VITE_STORE_NAME ?? 'Mi Tienda'
 
-const { notifications, connect, dismiss } = useNotifications()
+const { notifications, pendingQuotes, connect, dismiss } = useNotifications()
 const cmdPalette = useCommandPalette()
 
 onMounted(() => {
@@ -144,4 +147,15 @@ const navItems = [
 .toast-leave-active { transition: all .25s ease; }
 .toast-enter-from   { opacity: 0; transform: translateX(40px); }
 .toast-leave-to     { opacity: 0; transform: translateX(40px); }
+
+.toast-quote { border-left-color: #f59e0b; }
+.toast-quote .toast-title { color: #f59e0b; }
+
+/* Nav badge */
+.sb-badge {
+  margin-left: auto; background: #f59e0b; color: #0f172a;
+  font-size: 10px; font-weight: 800; border-radius: 999px;
+  padding: 1px 6px; min-width: 18px; text-align: center;
+  flex-shrink: 0;
+}
 </style>
