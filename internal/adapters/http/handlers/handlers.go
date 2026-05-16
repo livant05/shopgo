@@ -262,6 +262,7 @@ type quoteRepository interface {
 	GetByID(ctx context.Context, id string) (*domain.Quote, error)
 	UpdateStatus(ctx context.Context, id, status, note string) (*domain.Quote, error)
 	UpdateItems(ctx context.Context, id string, items []domain.QuoteItem, subtotal, taxAmount, total float64) (*domain.Quote, error)
+	ExpireOverdue(ctx context.Context) (int, error)
 	List(ctx context.Context, f ports.QuoteFilter) (*ports.Page[domain.Quote], error)
 }
 
@@ -472,6 +473,27 @@ func (h *QuoteHandler) UpdateStatus(c *gin.Context) {
 		})
 	}()
 	c.JSON(http.StatusOK, q)
+}
+
+func (h *QuoteHandler) NotifyCustomer(c *gin.Context) {
+	q, err := h.repo.GetByID(c.Request.Context(), c.Param("id"))
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
+	if q.CustomerEmail == "" {
+		apiErr(c, http.StatusUnprocessableEntity, "NO_EMAIL", "el cliente no tiene correo registrado")
+		return
+	}
+	go func() {
+		if err := h.mailer.SendQuoteReady(
+			q.CustomerEmail, q.CustomerName, q.StoreName, q.ID,
+			q.QuoteNumber, q.Total,
+		); err != nil {
+			slog.Error("enviar email cotización lista", "quote_id", q.ID, "err", err)
+		}
+	}()
+	c.JSON(http.StatusOK, gin.H{"message": "notificación enviada"})
 }
 
 func (h *QuoteHandler) UpdateItems(c *gin.Context) {

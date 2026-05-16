@@ -63,6 +63,24 @@ const noteInput  = ref('')
 const errMsg      = ref('')
 const exporting   = ref(false)
 const showCreate  = ref(false)
+const notifying   = ref(false)
+const notifyOk    = ref(false)
+
+async function notifyCustomer() {
+  if (!selected.value) return
+  notifying.value = true
+  notifyOk.value  = false
+  errMsg.value    = ''
+  try {
+    await api.post(`/admin/quotes/${selected.value.id}/notify`)
+    notifyOk.value = true
+    setTimeout(() => { notifyOk.value = false }, 3500)
+  } catch (e: any) {
+    errMsg.value = e?.response?.data?.message ?? 'Error al enviar notificación.'
+  } finally {
+    notifying.value = false
+  }
+}
 
 function onCreated(q: Quote) {
   showCreate.value = false
@@ -462,6 +480,14 @@ onMounted(() => load())
             <a :href="storeFrontLink(selected.id)" target="_blank" class="btn-view">
               🔗 Ver cotización
             </a>
+            <button
+              v-if="selected.customer_email"
+              class="btn-notify"
+              :disabled="notifying"
+              @click="notifyCustomer"
+            >
+              {{ notifyOk ? '✓ Enviado' : notifying ? 'Enviando…' : '📧 Notificar cliente' }}
+            </button>
           </div>
         </div>
       </div>
@@ -643,6 +669,13 @@ onMounted(() => load())
 .detail-actions { border-top: 1px solid #1a2540; padding-top: 1rem; display: flex; gap: .75rem; }
 .btn-view { display: inline-flex; align-items: center; gap: .4rem; padding: .55rem 1rem; background: rgba(56,189,248,.1); border: 1px solid rgba(56,189,248,.25); border-radius: 8px; color: #38bdf8; font-size: .875rem; font-weight: 600; text-decoration: none; }
 .btn-view:hover { background: rgba(56,189,248,.18); }
+.btn-notify {
+  display: inline-flex; align-items: center; gap: .4rem;
+  padding: .55rem 1rem; background: rgba(16,185,129,.1); border: 1px solid rgba(16,185,129,.25);
+  border-radius: 8px; color: #10b981; font-size: .875rem; font-weight: 600; cursor: pointer;
+}
+.btn-notify:hover:not(:disabled) { background: rgba(16,185,129,.2); }
+.btn-notify:disabled { opacity: .55; cursor: not-allowed; }
 
 /* Transition */
 .slide-enter-active, .slide-leave-active { transition: transform .25s ease; }

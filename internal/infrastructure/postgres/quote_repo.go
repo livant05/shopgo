@@ -65,6 +65,21 @@ func (r *QuoteRepo) UpdateItems(ctx context.Context, id string, items []domain.Q
 		raw, subtotal, taxAmount, total, id))
 }
 
+func (r *QuoteRepo) ExpireOverdue(ctx context.Context) (int, error) {
+	tag, err := r.db.Exec(ctx, `
+		UPDATE quotes
+		SET status = 'rejected',
+		    status_note = 'Vencida automáticamente',
+		    status_at   = NOW()
+		WHERE status = 'pending'
+		  AND expires_at IS NOT NULL
+		  AND expires_at < NOW()`)
+	if err != nil {
+		return 0, err
+	}
+	return int(tag.RowsAffected()), nil
+}
+
 func (r *QuoteRepo) List(ctx context.Context, f ports.QuoteFilter) (*ports.Page[domain.Quote], error) {
 	if f.PageSize <= 0 {
 		f.PageSize = 20

@@ -51,6 +51,31 @@ func (m *Mailer) send(to, subject, htmlBody string) error {
 	return smtp.SendMail(addr, auth, m.cfg.From, []string{to}, []byte(msg))
 }
 
+func (m *Mailer) SendQuoteReady(to, customerName, storeName, quoteID string, quoteNumber int, total float64) error {
+	if !m.Enabled() || to == "" {
+		return nil
+	}
+	numStr := fmt.Sprintf("%05d", quoteNumber)
+	link := fmt.Sprintf("%s/quote/%s", m.cfg.StoreURL, quoteID)
+	subject := fmt.Sprintf("📄 Tu cotización N.° %s está lista — %s", numStr, storeName)
+	return m.send(to, subject, readyBody(customerName, numStr, total, link, storeName))
+}
+
+func readyBody(name, number string, total float64, link, storeName string) string {
+	return fmt.Sprintf(`<!DOCTYPE html>
+<html><body style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;padding:32px 16px;background:#f8fafc">
+<div style="background:#fff;border-radius:12px;padding:32px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
+  <h1 style="color:#1d4ed8;font-size:1.4rem;margin:0 0 16px">📄 Tu cotización está lista</h1>
+  <p style="color:#0f172a">Hola <strong>%s</strong>,</p>
+  <p style="color:#475569">Hemos preparado la cotización N.° <strong>%s</strong> por un total de <strong>B/. %.2f</strong>. Puedes revisarla en el enlace a continuación y aceptarla cuando estés listo.</p>
+  <a href="%s" style="display:inline-block;background:#1d4ed8;color:#fff;text-decoration:none;border-radius:8px;padding:12px 24px;font-weight:700;margin:16px 0">Ver cotización →</a>
+  <p style="color:#64748b;font-size:.85rem">Esta cotización tiene una vigencia de 30 días. Si tienes preguntas, contáctanos directamente.</p>
+  <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0">
+  <p style="color:#94a3b8;font-size:.8rem">%s — responde a este correo si tienes preguntas.</p>
+</div>
+</body></html>`, name, number, total, link, storeName)
+}
+
 func acceptedBody(name, number string, total float64, link, note, storeName string) string {
 	noteHTML := ""
 	if note != "" {
