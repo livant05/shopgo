@@ -114,6 +114,7 @@ type OrderFilter struct {
 
 type QuoteFilter struct {
 	Search   string
+	Status   string
 	From     string
 	To       string
 	Page     int
@@ -123,6 +124,7 @@ type QuoteFilter struct {
 type QuoteRepository interface {
 	Create(ctx context.Context, q *domain.Quote) (*domain.Quote, error)
 	GetByID(ctx context.Context, id string) (*domain.Quote, error)
+	UpdateStatus(ctx context.Context, id, status, note string) (*domain.Quote, error)
 	List(ctx context.Context, f QuoteFilter) (*Page[domain.Quote], error)
 }
 

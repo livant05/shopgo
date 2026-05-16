@@ -145,6 +145,7 @@ func Setup(r *gin.Engine, d *Deps) {
 
 		// Cotizaciones
 		adm.GET("/quotes", d.Quote.List)
+		adm.PATCH("/quotes/:id/status", d.Quote.UpdateStatus)
 
 		// Configuración de la tienda
 		adm.GET("/store", d.Store.GetConfig)

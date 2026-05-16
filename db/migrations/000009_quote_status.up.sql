@@ -1,0 +1,9 @@
+ALTER TABLE quotes
+  ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'pending',
+  ADD COLUMN IF NOT EXISTS status_note TEXT NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS status_at TIMESTAMPTZ;
+
+ALTER TABLE quotes
+  ALTER COLUMN expires_at SET DEFAULT NOW() + INTERVAL '30 days';
+
+UPDATE quotes SET expires_at = created_at + INTERVAL '30 days' WHERE expires_at IS NULL;

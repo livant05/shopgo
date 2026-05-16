@@ -257,6 +257,7 @@ func (h *AuthHandler) ChangePassword(c *gin.Context) {
 type quoteRepository interface {
 	Create(ctx context.Context, q *domain.Quote) (*domain.Quote, error)
 	GetByID(ctx context.Context, id string) (*domain.Quote, error)
+	UpdateStatus(ctx context.Context, id, status, note string) (*domain.Quote, error)
 	List(ctx context.Context, f ports.QuoteFilter) (*ports.Page[domain.Quote], error)
 }
 
@@ -362,6 +363,7 @@ func (h *QuoteHandler) List(c *gin.Context) {
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
 	f := ports.QuoteFilter{
 		Search:   c.Query("q"),
+		Status:   c.Query("status"),
 		From:     c.Query("from"),
 		To:       c.Query("to"),
 		Page:     page,
@@ -373,6 +375,23 @@ func (h *QuoteHandler) List(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, result)
+}
+
+func (h *QuoteHandler) UpdateStatus(c *gin.Context) {
+	var body struct {
+		Status string `json:"status" binding:"required,oneof=pending accepted rejected"`
+		Note   string `json:"note"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		apiErr(c, http.StatusBadRequest, "BAD_REQUEST", err.Error())
+		return
+	}
+	q, err := h.repo.UpdateStatus(c.Request.Context(), c.Param("id"), body.Status, body.Note)
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, q)
 }
 
 // ──── StoreHandler ──────────────────────────────────────────

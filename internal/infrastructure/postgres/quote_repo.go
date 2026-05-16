@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -18,10 +19,12 @@ func NewQuoteRepo(db *pgxpool.Pool) *QuoteRepo { return &QuoteRepo{db} }
 
 const quoteSelect = `id, quote_number, items, subtotal, tax_rate, tax_amount, total, currency,
 	store_name, contact_email, support_phone,
-	customer_name, customer_email, customer_phone, note, created_at, expires_at`
+	customer_name, customer_email, customer_phone, note,
+	status, status_note, status_at, created_at, expires_at`
 
 func (r *QuoteRepo) Create(ctx context.Context, q *domain.Quote) (*domain.Quote, error) {
 	items, _ := json.Marshal(q.Items)
+	exp := time.Now().AddDate(0, 0, 30)
 	return r.scan(r.db.QueryRow(ctx, `
 		INSERT INTO quotes
 		  (items, subtotal, tax_rate, tax_amount, total, currency,
@@ -31,12 +34,22 @@ func (r *QuoteRepo) Create(ctx context.Context, q *domain.Quote) (*domain.Quote,
 		RETURNING `+quoteSelect,
 		items, q.Subtotal, q.TaxRate, q.TaxAmount, q.Total, q.Currency,
 		q.StoreName, q.ContactEmail, q.SupportPhone,
-		q.CustomerName, q.CustomerEmail, q.CustomerPhone, q.Note, q.ExpiresAt))
+		q.CustomerName, q.CustomerEmail, q.CustomerPhone, q.Note, exp))
 }
 
 func (r *QuoteRepo) GetByID(ctx context.Context, id string) (*domain.Quote, error) {
 	return r.scan(r.db.QueryRow(ctx,
 		`SELECT `+quoteSelect+` FROM quotes WHERE id = $1`, id))
+}
+
+func (r *QuoteRepo) UpdateStatus(ctx context.Context, id, status, note string) (*domain.Quote, error) {
+	now := time.Now()
+	return r.scan(r.db.QueryRow(ctx, `
+		UPDATE quotes
+		SET status = $1, status_note = $2, status_at = $3
+		WHERE id = $4
+		RETURNING `+quoteSelect,
+		status, note, now, id))
 }
 
 func (r *QuoteRepo) List(ctx context.Context, f ports.QuoteFilter) (*ports.Page[domain.Quote], error) {
@@ -58,6 +71,11 @@ func (r *QuoteRepo) List(ctx context.Context, f ports.QuoteFilter) (*ports.Page[
 			"(LOWER(customer_name) LIKE $%d OR LOWER(customer_email) LIKE $%d)", n, n+1))
 		args = append(args, like, like)
 		n += 2
+	}
+	if f.Status != "" {
+		where = append(where, fmt.Sprintf("status = $%d", n))
+		args = append(args, f.Status)
+		n++
 	}
 	if f.From != "" {
 		where = append(where, fmt.Sprintf("created_at >= $%d", n))
@@ -121,7 +139,7 @@ func (r *QuoteRepo) scan(row rowScanner) (*domain.Quote, error) {
 		&q.Subtotal, &q.TaxRate, &q.TaxAmount, &q.Total, &q.Currency,
 		&q.StoreName, &q.ContactEmail, &q.SupportPhone,
 		&q.CustomerName, &q.CustomerEmail, &q.CustomerPhone, &q.Note,
-		&q.CreatedAt, &q.ExpiresAt,
+		&q.Status, &q.StatusNote, &q.StatusAt, &q.CreatedAt, &q.ExpiresAt,
 	); err != nil {
 		if err == pgx.ErrNoRows {
 			return nil, ports.ErrNotFound
