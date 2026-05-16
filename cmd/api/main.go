@@ -106,6 +106,20 @@ func main() {
 		slog.Info("mailer SMTP configurado", "host", cfg.SMTPHost)
 	}
 
+	// ── Auto-expiración de cotizaciones ──────────────────
+	go func() {
+		ticker := time.NewTicker(30 * time.Minute)
+		defer ticker.Stop()
+		for range ticker.C {
+			n, err := quoteRepo.ExpireOverdue(context.Background())
+			if err != nil {
+				slog.Error("expirar cotizaciones vencidas", "err", err)
+			} else if n > 0 {
+				slog.Info("cotizaciones vencidas expiradas", "count", n)
+			}
+		}
+	}()
+
 	// ── Notificaciones SSE ───────────────────────────────
 	notifyHub := handlers.NewNotifyHub()
 	go func() {

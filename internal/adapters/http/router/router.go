@@ -148,6 +148,7 @@ func Setup(r *gin.Engine, d *Deps) {
 		adm.POST("/quotes", d.Quote.Create)
 		adm.GET("/quotes/export", d.Quote.Export)
 		adm.PUT("/quotes/:id/items", d.Quote.UpdateItems)
+		adm.POST("/quotes/:id/notify", d.Quote.NotifyCustomer)
 		adm.PATCH("/quotes/:id/status", d.Quote.UpdateStatus)
 
 		// Configuración de la tienda
