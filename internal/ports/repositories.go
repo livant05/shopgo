@@ -121,12 +121,23 @@ type QuoteFilter struct {
 	PageSize int
 }
 
+type QuoteStats struct {
+	Pending        int64   `json:"pending"`
+	Accepted       int64   `json:"accepted"`
+	Rejected       int64   `json:"rejected"`
+	Total          int64   `json:"total"`
+	AcceptedValue  float64 `json:"accepted_value"`
+	PipelineValue  float64 `json:"pipeline_value"`
+	ConversionRate float64 `json:"conversion_rate"`
+}
+
 type QuoteRepository interface {
 	Create(ctx context.Context, q *domain.Quote) (*domain.Quote, error)
 	GetByID(ctx context.Context, id string) (*domain.Quote, error)
 	UpdateStatus(ctx context.Context, id, status, note string) (*domain.Quote, error)
 	UpdateItems(ctx context.Context, id string, items []domain.QuoteItem, subtotal, taxAmount, total float64) (*domain.Quote, error)
 	ExpireOverdue(ctx context.Context) (int, error)
+	Stats(ctx context.Context) (*QuoteStats, error)
 	List(ctx context.Context, f QuoteFilter) (*Page[domain.Quote], error)
 }
 
