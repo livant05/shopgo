@@ -10,7 +10,7 @@
           </div>
 
           <!-- Vacía -->
-          <div v-if="quote.isEmpty" class="empty">
+          <div v-if="quote.isEmpty && step !== 3" class="empty">
             <p>No tienes productos en tu cotización.</p>
             <button class="btn-sec" @click="quote.isOpen = false">Explorar catálogo</button>
           </div>
@@ -57,7 +57,7 @@
             </div>
 
             <!-- Paso 2: datos del cliente -->
-            <div v-else class="step-form">
+            <div v-else-if="step === 2" class="step-form">
               <p class="form-subtitle">Completa tus datos para generar la cotización formal.</p>
 
               <div class="form-grid">
@@ -89,6 +89,29 @@
               </div>
             </div>
 
+            <!-- Paso 3: éxito -->
+            <div v-else class="step-success">
+              <div class="success-icon">✅</div>
+              <h3 class="success-title">¡Cotización enviada!</h3>
+              <p class="success-sub">
+                Tu cotización N.° <strong>{{ createdNum }}</strong> fue recibida.<br>
+                Te notificaremos cuando esté lista.
+              </p>
+
+              <div class="success-quote-box">
+                <p class="success-quote-label">Número de cotización</p>
+                <p class="success-quote-num">{{ createdNum }}</p>
+                <button class="btn-copy-link" @click="copyLink()">
+                  {{ copied ? '✓ Copiado' : '🔗 Copiar enlace' }}
+                </button>
+              </div>
+
+              <div class="step-actions step-actions-col">
+                <button class="btn-primary" @click="goToQuote()">Ver cotización →</button>
+                <button class="btn-ghost" @click="closeAndReset()">Cerrar</button>
+              </div>
+            </div>
+
           </template>
         </div>
       </div>
@@ -102,12 +125,15 @@ import { useRouter } from 'vue-router'
 import { useQuoteStore } from '../stores/quote'
 import { api } from '../api/client'
 
-const quote = useQuoteStore()
+const quote  = useQuoteStore()
 const router = useRouter()
 
-const step = ref(1)
+const step       = ref(1)
 const submitting = ref(false)
-const errMsg = ref('')
+const errMsg     = ref('')
+const copied     = ref(false)
+const createdId  = ref('')
+const createdNum = ref('')
 
 const form = ref({
   customer_name: '',
@@ -139,16 +165,37 @@ async function submit() {
       ...form.value,
     }
     const { data } = await api.post('/quotes', payload)
+    createdId.value  = data.id
+    createdNum.value = String(data.quote_number).padStart(5, '0')
     quote.clear()
-    quote.isOpen = false
-    step.value = 1
     form.value = { customer_name: '', customer_email: '', customer_phone: '', note: '' }
-    router.push(`/quote/${data.id}`)
+    step.value = 3
   } catch (e: any) {
     errMsg.value = e?.response?.data?.message ?? 'Error al generar la cotización.'
   } finally {
     submitting.value = false
   }
+}
+
+async function copyLink() {
+  try {
+    await navigator.clipboard.writeText(`${window.location.origin}/quote/${createdId.value}`)
+    copied.value = true
+    setTimeout(() => copied.value = false, 2000)
+  } catch {}
+}
+
+function goToQuote() {
+  quote.isOpen = false
+  step.value = 1
+  router.push(`/quote/${createdId.value}`)
+}
+
+function closeAndReset() {
+  quote.isOpen = false
+  step.value = 1
+  createdId.value = ''
+  createdNum.value = ''
 }
 </script>
 
@@ -213,15 +260,37 @@ async function submit() {
 
 .err-msg { color: #dc2626; font-size: .82rem; background: #fef2f2; padding: .5rem .75rem; border-radius: .5rem; }
 
+/* Success step */
+.step-success {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  flex: 1; padding: 2rem 1.5rem; gap: 1.25rem; text-align: center;
+}
+.success-icon { font-size: 3rem; line-height: 1; }
+.success-title { font-size: 1.35rem; font-weight: 800; color: #0f172a; margin: 0; }
+.success-sub { font-size: .9rem; color: #64748b; margin: 0; line-height: 1.6; }
+
+.success-quote-box {
+  width: 100%; background: #f0fdf4; border: 1px solid #bbf7d0;
+  border-radius: .75rem; padding: 1.25rem; display: flex; flex-direction: column; align-items: center; gap: .5rem;
+}
+.success-quote-label { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: #16a34a; margin: 0; }
+.success-quote-num { font-size: 1.75rem; font-weight: 800; color: #0f172a; letter-spacing: .05em; margin: 0; font-family: monospace; }
+.btn-copy-link {
+  background: none; border: 1px solid #86efac; border-radius: .5rem;
+  padding: .35rem .9rem; font-size: .8rem; color: #16a34a; cursor: pointer;
+}
+.btn-copy-link:hover { background: #dcfce7; }
+
 /* Actions */
-.step-actions { display: flex; justify-content: space-between; gap: .75rem; margin-top: auto; padding-top: .5rem; }
+.step-actions { display: flex; justify-content: space-between; gap: .75rem; margin-top: auto; padding-top: .5rem; width: 100%; }
+.step-actions-col { flex-direction: column; }
 .btn-primary {
   flex: 1; background: #1d4ed8; color: #fff; border: none; border-radius: .6rem;
   padding: .65rem 1.25rem; font-weight: 700; font-size: .9rem; cursor: pointer;
 }
 .btn-primary:hover:not(:disabled) { background: #1e40af; }
 .btn-primary:disabled { opacity: .55; cursor: not-allowed; }
-.btn-ghost { background: none; border: 1px solid #d1d5db; border-radius: .6rem; padding: .65rem 1rem; font-size: .875rem; cursor: pointer; color: #475569; }
+.btn-ghost { background: none; border: 1px solid #d1d5db; border-radius: .6rem; padding: .65rem 1rem; font-size: .875rem; cursor: pointer; color: #475569; flex: 1; }
 .btn-ghost:hover { background: #f1f5f9; }
 .btn-sec { background: #3b82f6; color: #fff; border: none; border-radius: .6rem; padding: .6rem 1.25rem; font-weight: 600; cursor: pointer; }
 

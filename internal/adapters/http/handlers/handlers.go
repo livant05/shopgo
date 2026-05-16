@@ -419,6 +419,13 @@ func (h *QuoteHandler) UpdateStatus(c *gin.Context) {
 			}
 		}()
 	}
+	go func() {
+		_ = h.pub.Publish(context.Background(), "notifications", map[string]any{
+			"event":      "quote.status_changed",
+			"quote_id":   q.ID,
+			"new_status": body.Status,
+		})
+	}()
 	c.JSON(http.StatusOK, q)
 }
 
