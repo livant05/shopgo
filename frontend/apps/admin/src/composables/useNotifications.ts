@@ -67,6 +67,11 @@ export function useNotifications() {
           pendingQuotes.value++
           setTimeout(() => dismiss(n.id), 8000)
         }
+
+        if (data.event === 'quote.status_changed' &&
+            (data.new_status === 'accepted' || data.new_status === 'rejected')) {
+          pendingQuotes.value = Math.max(0, pendingQuotes.value - 1)
+        }
       } catch {}
     }
 
