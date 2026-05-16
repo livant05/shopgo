@@ -132,7 +132,7 @@ func main() {
 		Store:     handlers.NewStoreHandler(storeRepo),
 		Coupon:    handlers.NewCouponHandler(couponRepo),
 		Notify:    handlers.NewNotifyHandler(notifyHub),
-		Quote:     handlers.NewQuoteHandler(quoteRepo, storeRepo, mail),
+		Quote:     handlers.NewQuoteHandler(quoteRepo, storeRepo, mail, redisClient),
 		PubKey:    pubKey,
 		AdminIPs:  cfg.AdminIPs,
 	}

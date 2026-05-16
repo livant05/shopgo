@@ -268,14 +268,19 @@ type quoteStoreRepository interface {
 	Get(ctx context.Context) (*domain.StoreConfig, error)
 }
 
+type quotePublisher interface {
+	Publish(ctx context.Context, ch string, payload any) error
+}
+
 type QuoteHandler struct {
 	repo   quoteRepository
 	store  quoteStoreRepository
 	mailer *mailer.Mailer
+	pub    quotePublisher
 }
 
-func NewQuoteHandler(repo quoteRepository, store quoteStoreRepository, m *mailer.Mailer) *QuoteHandler {
-	return &QuoteHandler{repo, store, m}
+func NewQuoteHandler(repo quoteRepository, store quoteStoreRepository, m *mailer.Mailer, pub quotePublisher) *QuoteHandler {
+	return &QuoteHandler{repo, store, m, pub}
 }
 
 func (h *QuoteHandler) Create(c *gin.Context) {
@@ -350,6 +355,15 @@ func (h *QuoteHandler) Create(c *gin.Context) {
 		mapErr(c, err)
 		return
 	}
+	go func() {
+		_ = h.pub.Publish(context.Background(), "notifications", map[string]any{
+			"event":         "quote.new",
+			"quote_id":      created.ID,
+			"quote_number":  created.QuoteNumber,
+			"customer_name": created.CustomerName,
+			"total":         created.Total,
+		})
+	}()
 	c.JSON(http.StatusCreated, created)
 }
 
