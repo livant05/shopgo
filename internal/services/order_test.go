@@ -36,10 +36,10 @@ func (m *mockOrders) UpdateStatus(ctx context.Context, id string, s domain.Order
 	}
 	return nil
 }
-func (m *mockOrders) ConfirmPayment(_ context.Context, _, _ string) error  { return nil }
-func (m *mockOrders) RequestRefund(_ context.Context, _, _ string) error   { return nil }
-func (m *mockOrders) ApproveRefund(_ context.Context, _ string) error      { return nil }
-func (m *mockOrders) RejectRefund(_ context.Context, _ string) error       { return nil }
+func (m *mockOrders) ConfirmPayment(_ context.Context, _, _ string) error { return nil }
+func (m *mockOrders) RequestRefund(_ context.Context, _, _ string) error  { return nil }
+func (m *mockOrders) ApproveRefund(_ context.Context, _ string) error     { return nil }
+func (m *mockOrders) RejectRefund(_ context.Context, _ string) error      { return nil }
 
 type mockInventory struct {
 	reserveOK bool
@@ -94,13 +94,19 @@ func (m *mockProducts) Update(_ context.Context, p *domain.Product) (*domain.Pro
 }
 func (m *mockProducts) SetActive(_ context.Context, _ string, _ bool) error            { return nil }
 func (m *mockProducts) SetBranchPrice(_ context.Context, _ domain.OverridePrice) error { return nil }
-func (m *mockProducts) BulkUpsert(_ context.Context, _ []*domain.Product) (int, error)        { return 0, nil }
-func (m *mockProducts) ListTags(_ context.Context) ([]string, error)                           { return nil, nil }
-func (m *mockProducts) ListCategories(_ context.Context) ([]domain.Category, error)            { return nil, nil }
-func (m *mockProducts) GetCategory(_ context.Context, _ string) (*domain.Category, error)      { return nil, nil }
-func (m *mockProducts) CreateCategory(_ context.Context, c *domain.Category) (*domain.Category, error) { return c, nil }
-func (m *mockProducts) UpdateCategory(_ context.Context, c *domain.Category) (*domain.Category, error) { return c, nil }
-func (m *mockProducts) SetCategoryActive(_ context.Context, _ string, _ bool) error            { return nil }
+func (m *mockProducts) BulkUpsert(_ context.Context, _ []*domain.Product) (int, error) { return 0, nil }
+func (m *mockProducts) ListTags(_ context.Context) ([]string, error)                   { return nil, nil }
+func (m *mockProducts) ListCategories(_ context.Context) ([]domain.Category, error)    { return nil, nil }
+func (m *mockProducts) GetCategory(_ context.Context, _ string) (*domain.Category, error) {
+	return nil, nil
+}
+func (m *mockProducts) CreateCategory(_ context.Context, c *domain.Category) (*domain.Category, error) {
+	return c, nil
+}
+func (m *mockProducts) UpdateCategory(_ context.Context, c *domain.Category) (*domain.Category, error) {
+	return c, nil
+}
+func (m *mockProducts) SetCategoryActive(_ context.Context, _ string, _ bool) error { return nil }
 
 type mockBranches struct{ active bool }
 
@@ -266,5 +272,61 @@ func TestOrderStatus_Transitions(t *testing.T) {
 		if got != tc.expect {
 			t.Errorf("%s → %s: esperaba %v, obtuvo %v", tc.from, tc.to, tc.expect, got)
 		}
+	}
+}
+
+func TestRequestRefund_OK(t *testing.T) {
+	orders := &mockOrders{getFn: func(_ context.Context, _ string) (*domain.Order, error) {
+		return &domain.Order{
+			Status:       domain.StatusDelivered,
+			RefundStatus: "none",
+			CustomerID:   "cust-1",
+		}, nil
+	}}
+	svc := newSvc(orders, &mockInventory{}, true)
+	if err := svc.RequestRefund(context.Background(), "order-1", "producto dañado", "cust-1"); err != nil {
+		t.Fatalf("esperaba nil, obtuvo %v", err)
+	}
+}
+
+func TestRequestRefund_WrongCustomer(t *testing.T) {
+	orders := &mockOrders{getFn: func(_ context.Context, _ string) (*domain.Order, error) {
+		return &domain.Order{Status: domain.StatusDelivered, RefundStatus: "none", CustomerID: "cust-1"}, nil
+	}}
+	svc := newSvc(orders, &mockInventory{}, true)
+	if err := svc.RequestRefund(context.Background(), "order-1", "razón", "otro"); err != ports.ErrNotFound {
+		t.Fatalf("esperaba ErrNotFound, obtuvo %v", err)
+	}
+}
+
+func TestRequestRefund_BadStatus(t *testing.T) {
+	orders := &mockOrders{getFn: func(_ context.Context, _ string) (*domain.Order, error) {
+		return &domain.Order{Status: domain.StatusPending, RefundStatus: "none", CustomerID: "cust-1"}, nil
+	}}
+	svc := newSvc(orders, &mockInventory{}, true)
+	if err := svc.RequestRefund(context.Background(), "order-1", "razón", "cust-1"); err != ports.ErrInvalidTransition {
+		t.Fatalf("esperaba ErrInvalidTransition, obtuvo %v", err)
+	}
+}
+
+func TestApproveRefund_RestoresInventory(t *testing.T) {
+	orders := &mockOrders{getFn: func(_ context.Context, _ string) (*domain.Order, error) {
+		return &domain.Order{
+			ID:       "order-1",
+			BranchID: "branch-1",
+			Items:    []domain.OrderItem{{ProductID: "prod-1", Quantity: 2}},
+		}, nil
+	}}
+	inv := &mockInventory{}
+	svc := newSvc(orders, inv, true)
+	if err := svc.ApproveRefund(context.Background(), "order-1234", "admin-1"); err != nil {
+		t.Fatalf("esperaba nil, obtuvo %v", err)
+	}
+}
+
+func TestRejectRefund(t *testing.T) {
+	svc := newSvc(&mockOrders{}, &mockInventory{}, true)
+	if err := svc.RejectRefund(context.Background(), "order-1"); err != nil {
+		t.Fatalf("esperaba nil, obtuvo %v", err)
 	}
 }
