@@ -10,9 +10,18 @@ export interface QuoteItem {
   image_url?: string
 }
 
+export interface QuoteHistoryItem {
+  id: string
+  quoteNumber: number
+  total: number
+  createdAt: string
+  customerName: string
+}
+
 export const useQuoteStore = defineStore('quote', () => {
-  const items  = ref<QuoteItem[]>([])
-  const isOpen = ref(false)
+  const items   = ref<QuoteItem[]>([])
+  const isOpen  = ref(false)
+  const history = ref<QuoteHistoryItem[]>([])
 
   const count    = computed(() => items.value.reduce((s, i) => s + i.qty, 0))
   const subtotal = computed(() => items.value.reduce((s, i) => s + i.unit_price * i.qty, 0))
@@ -45,14 +54,24 @@ export const useQuoteStore = defineStore('quote', () => {
     localStorage.setItem('quote_items', JSON.stringify(items.value))
   }
 
+  function saveToHistory(entry: QuoteHistoryItem) {
+    if (history.value.find(h => h.id === entry.id)) return
+    history.value.unshift(entry)
+    localStorage.setItem('quote_history', JSON.stringify(history.value))
+  }
+
   function restore() {
     try {
       const raw = localStorage.getItem('quote_items')
       if (raw) items.value = JSON.parse(raw)
     } catch {}
+    try {
+      const raw = localStorage.getItem('quote_history')
+      if (raw) history.value = JSON.parse(raw)
+    } catch {}
   }
 
   restore()
 
-  return { items, isOpen, count, subtotal, isEmpty, add, remove, setQty, clear }
+  return { items, isOpen, history, count, subtotal, isEmpty, add, remove, setQty, clear, saveToHistory }
 })

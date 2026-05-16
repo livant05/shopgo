@@ -167,6 +167,13 @@ async function submit() {
     const { data } = await api.post('/quotes', payload)
     createdId.value  = data.id
     createdNum.value = String(data.quote_number).padStart(5, '0')
+    quote.saveToHistory({
+      id: data.id,
+      quoteNumber: data.quote_number,
+      total: data.total,
+      createdAt: data.created_at,
+      customerName: form.value.customer_name,
+    })
     quote.clear()
     form.value = { customer_name: '', customer_email: '', customer_phone: '', note: '' }
     step.value = 3
