@@ -40,6 +40,12 @@ type Config struct {
 	EmailFrom       string
 	StoreAdminEmail string
 
+	SMTPHost string
+	SMTPPort string
+	SMTPUser string
+	SMTPPass string
+	StoreURL string
+
 	AllowedOrigins []string
 	AdminIPs       []string
 
@@ -91,6 +97,12 @@ func Load() (*Config, error) {
 		ResendAPIKey:    getEnv("RESEND_API_KEY", ""),
 		EmailFrom:       getEnv("EMAIL_FROM", "no-reply@tienda.com"),
 		StoreAdminEmail: getEnv("STORE_ADMIN_EMAIL", ""),
+
+		SMTPHost: getEnv("SMTP_HOST", ""),
+		SMTPPort: getEnv("SMTP_PORT", "1025"),
+		SMTPUser: getEnv("SMTP_USER", ""),
+		SMTPPass: getEnv("SMTP_PASS", ""),
+		StoreURL: getEnv("STORE_URL", "http://localhost:5177"),
 
 		AllowedOrigins: split(getEnv("ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:5174")),
 		AdminIPs:       split(getEnv("ADMIN_IPS", "")),

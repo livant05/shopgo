@@ -10,11 +10,14 @@ import (
 	"strconv"
 	"strings"
 
+	"log/slog"
+
 	"github.com/gin-gonic/gin"
 	"github.com/yourorg/shopgo/internal/domain"
 	"github.com/yourorg/shopgo/internal/infrastructure/postgres"
 	"github.com/yourorg/shopgo/internal/ports"
 	"github.com/yourorg/shopgo/internal/services"
+	"github.com/yourorg/shopgo/pkg/mailer"
 )
 
 // ──── helpers ─────────────────────────────────────────────
@@ -266,12 +269,13 @@ type quoteStoreRepository interface {
 }
 
 type QuoteHandler struct {
-	repo  quoteRepository
-	store quoteStoreRepository
+	repo   quoteRepository
+	store  quoteStoreRepository
+	mailer *mailer.Mailer
 }
 
-func NewQuoteHandler(repo quoteRepository, store quoteStoreRepository) *QuoteHandler {
-	return &QuoteHandler{repo, store}
+func NewQuoteHandler(repo quoteRepository, store quoteStoreRepository, m *mailer.Mailer) *QuoteHandler {
+	return &QuoteHandler{repo, store, m}
 }
 
 func (h *QuoteHandler) Create(c *gin.Context) {
@@ -390,6 +394,16 @@ func (h *QuoteHandler) UpdateStatus(c *gin.Context) {
 	if err != nil {
 		mapErr(c, err)
 		return
+	}
+	if (body.Status == "accepted" || body.Status == "rejected") && q.CustomerEmail != "" {
+		go func() {
+			if err := h.mailer.SendQuoteStatus(
+				q.CustomerEmail, q.CustomerName, q.StoreName, q.ID,
+				q.QuoteNumber, q.Total, body.Status, body.Note,
+			); err != nil {
+				slog.Error("enviar email cotización", "quote_id", q.ID, "err", err)
+			}
+		}()
 	}
 	c.JSON(http.StatusOK, q)
 }
