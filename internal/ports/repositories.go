@@ -125,6 +125,7 @@ type QuoteRepository interface {
 	Create(ctx context.Context, q *domain.Quote) (*domain.Quote, error)
 	GetByID(ctx context.Context, id string) (*domain.Quote, error)
 	UpdateStatus(ctx context.Context, id, status, note string) (*domain.Quote, error)
+	UpdateItems(ctx context.Context, id string, items []domain.QuoteItem, subtotal, taxAmount, total float64) (*domain.Quote, error)
 	List(ctx context.Context, f QuoteFilter) (*Page[domain.Quote], error)
 }
 
