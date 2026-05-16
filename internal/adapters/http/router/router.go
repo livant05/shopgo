@@ -143,6 +143,9 @@ func Setup(r *gin.Engine, d *Deps) {
 		adm.PATCH("/orders/:id/status", d.Order.UpdateStatus)
 		adm.PUT("/orders/:id/refund", d.Order.ProcessRefund)
 
+		// Cotizaciones
+		adm.GET("/quotes", d.Quote.List)
+
 		// Configuración de la tienda
 		adm.GET("/store", d.Store.GetConfig)
 		adm.PUT("/store", d.Store.UpdateConfig)

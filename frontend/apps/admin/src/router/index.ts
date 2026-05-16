@@ -23,6 +23,7 @@ export const router = createRouter({
         { path: 'reports',   name: 'Reports',   component: () => import('../views/Reports/ReportsView.vue'),     meta: { minRole: 'admin' } },
         { path: 'categories', name: 'Categories', component: () => import('../views/Categories/CategoriesView.vue'), meta: { minRole: 'admin' } },
         { path: 'coupons',   name: 'Coupons',   component: () => import('../views/Coupons/CouponsView.vue'),     meta: { minRole: 'admin' } },
+        { path: 'quotes',    name: 'Quotes',    component: () => import('../views/Quotes/QuotesView.vue'),       meta: { minRole: 'staff' } },
         { path: 'settings',  name: 'Settings',  component: () => import('../views/Settings/SettingsView.vue'),   meta: { minRole: 'admin' } },
       ],
     },
