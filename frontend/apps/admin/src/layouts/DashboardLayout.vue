@@ -88,6 +88,7 @@ const navItems = [
   { to: '/branches',   icon: '🏪', label: 'Sucursales',  minRole: 'admin'   },
   { to: '/users',     icon: '👥', label: 'Usuarios',   minRole: 'admin'   },
   { to: '/reports',   icon: '📈', label: 'Reportes',   minRole: 'admin'   },
+  { to: '/quotes',    icon: '📄', label: 'Cotizaciones', minRole: 'staff'   },
   { to: '/coupons',   icon: '🏷️', label: 'Cupones',    minRole: 'admin'   },
   { to: '/settings',  icon: '⚙️', label: 'Config',     minRole: 'admin'   },
 ]

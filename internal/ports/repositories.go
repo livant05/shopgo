@@ -112,9 +112,18 @@ type OrderFilter struct {
 	PageSize     int
 }
 
+type QuoteFilter struct {
+	Search   string
+	From     string
+	To       string
+	Page     int
+	PageSize int
+}
+
 type QuoteRepository interface {
 	Create(ctx context.Context, q *domain.Quote) (*domain.Quote, error)
 	GetByID(ctx context.Context, id string) (*domain.Quote, error)
+	List(ctx context.Context, f QuoteFilter) (*Page[domain.Quote], error)
 }
 
 type ReportRepository interface {

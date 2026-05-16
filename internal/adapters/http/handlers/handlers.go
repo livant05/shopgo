@@ -257,6 +257,7 @@ func (h *AuthHandler) ChangePassword(c *gin.Context) {
 type quoteRepository interface {
 	Create(ctx context.Context, q *domain.Quote) (*domain.Quote, error)
 	GetByID(ctx context.Context, id string) (*domain.Quote, error)
+	List(ctx context.Context, f ports.QuoteFilter) (*ports.Page[domain.Quote], error)
 }
 
 type quoteStoreRepository interface {
@@ -354,6 +355,24 @@ func (h *QuoteHandler) Get(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, q)
+}
+
+func (h *QuoteHandler) List(c *gin.Context) {
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
+	f := ports.QuoteFilter{
+		Search:   c.Query("q"),
+		From:     c.Query("from"),
+		To:       c.Query("to"),
+		Page:     page,
+		PageSize: pageSize,
+	}
+	result, err := h.repo.List(c.Request.Context(), f)
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, result)
 }
 
 // ──── StoreHandler ──────────────────────────────────────────
