@@ -49,6 +49,7 @@ type Order struct {
 	ReservationID   string      `json:"-"`
 	CouponCode      string      `json:"coupon_code,omitempty"`
 	Notes           string      `json:"notes,omitempty"`
+	QuoteID         *string     `json:"quote_id,omitempty"`
 	RefundStatus    string      `json:"refund_status"`
 	RefundReason    string      `json:"refund_reason,omitempty"`
 	RefundedAt      *time.Time  `json:"refunded_at,omitempty"`

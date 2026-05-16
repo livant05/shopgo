@@ -8,10 +8,11 @@ export interface CartItem {
 }
 
 export const useCartStore = defineStore('cart', () => {
-  const items   = ref<CartItem[]>([])
-  const isOpen  = ref(false)
-  const coupon  = ref('')
-  const discount = ref(0)
+  const items       = ref<CartItem[]>([])
+  const isOpen      = ref(false)
+  const coupon      = ref('')
+  const discount    = ref(0)
+  const fromQuoteId = ref<string | null>(null)
 
   const count    = computed(() => items.value.reduce((s, i) => s + i.quantity, 0))
   const subtotal = computed(() => items.value.reduce((s, i) => s + i.unit_price * i.quantity, 0))
@@ -33,7 +34,7 @@ export const useCartStore = defineStore('cart', () => {
     if (n <= 0) return remove(id)
     i.quantity = Math.min(n, i.stock); save()
   }
-  function clear() { items.value = []; coupon.value = ''; discount.value = 0; save() }
+  function clear() { items.value = []; coupon.value = ''; discount.value = 0; fromQuoteId.value = null; save() }
 
   async function applyCoupon(code: string) {
     try {
@@ -49,6 +50,7 @@ export const useCartStore = defineStore('cart', () => {
       items: items.value,
       coupon: coupon.value,
       discount: discount.value,
+      fromQuoteId: fromQuoteId.value,
     }))
   }
   function restore() {
@@ -58,10 +60,15 @@ export const useCartStore = defineStore('cart', () => {
       const d = JSON.parse(raw)
       // Support both old format (plain array) and new format (object)
       if (Array.isArray(d)) { items.value = d }
-      else { items.value = d.items ?? []; coupon.value = d.coupon ?? ''; discount.value = d.discount ?? 0 }
+      else {
+        items.value = d.items ?? []
+        coupon.value = d.coupon ?? ''
+        discount.value = d.discount ?? 0
+        fromQuoteId.value = d.fromQuoteId ?? null
+      }
     } catch {}
   }
   restore()
 
-  return { items, isOpen, coupon, discount, count, subtotal, total, isEmpty, add, remove, qty, clear, applyCoupon }
+  return { items, isOpen, coupon, discount, fromQuoteId, count, subtotal, total, isEmpty, add, remove, qty, clear, applyCoupon }
 })

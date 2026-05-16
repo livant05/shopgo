@@ -928,6 +928,7 @@ func (h *OrderHandler) Create(c *gin.Context) {
 		ShippingAddress domain.Address `json:"shipping_address"`
 		Currency        string         `json:"currency"`
 		Notes           string         `json:"notes"`
+		QuoteID         string         `json:"quote_id"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		apiErr(c, http.StatusBadRequest, "INVALID_BODY", err.Error())
@@ -947,6 +948,7 @@ func (h *OrderHandler) Create(c *gin.Context) {
 		ShippingAddress: req.ShippingAddress,
 		Currency:        req.Currency,
 		Notes:           req.Notes,
+		QuoteID:         req.QuoteID,
 	})
 	if err != nil {
 		mapErr(c, err)
@@ -1018,6 +1020,7 @@ func (h *OrderHandler) ListAll(c *gin.Context) {
 	f := ports.OrderFilter{
 		Status:       c.Query("status"),
 		RefundStatus: c.Query("refund_status"),
+		QuoteID:      c.Query("quote_id"),
 		Page:         queryInt(c, "page", 1),
 		PageSize:     queryInt(c, "page_size", 20),
 	}

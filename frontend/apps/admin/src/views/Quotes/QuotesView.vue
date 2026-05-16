@@ -78,6 +78,8 @@ const exporting   = ref(false)
 const showCreate  = ref(false)
 const notifying   = ref(false)
 const notifyOk    = ref(false)
+const linkedOrder = ref<{ id: string } | null>(null)
+const loadingOrder = ref(false)
 
 async function notifyCustomer() {
   if (!selected.value) return
@@ -246,6 +248,21 @@ function storeFrontLink(id: string) {
   const base = import.meta.env.VITE_STOREFRONT_URL ?? 'http://localhost:5177'
   return `${base}/quote/${id}`
 }
+
+async function fetchLinkedOrder(quoteId: string) {
+  linkedOrder.value = null
+  loadingOrder.value = true
+  try {
+    const { data } = await api.get('/admin/orders', { params: { quote_id: quoteId, page_size: 1 } })
+    if (data?.data?.length) linkedOrder.value = data.data[0]
+  } catch {}
+  finally { loadingOrder.value = false }
+}
+
+watch(selected, (q) => {
+  if (q?.status === 'accepted') fetchLinkedOrder(q.id)
+  else linkedOrder.value = null
+})
 
 watch(search, scheduleLoad)
 watch([statusFilter, from, to], () => load(true))
@@ -492,6 +509,17 @@ onMounted(() => { load(); loadStats() })
             <div class="total-row"><span>Subtotal</span><span>{{ selected.currency }} {{ fmt(selected.subtotal) }}</span></div>
             <div class="total-row"><span>Impuesto ({{ (selected.tax_rate * 100).toFixed(0) }}%)</span><span>{{ selected.currency }} {{ fmt(selected.tax_amount) }}</span></div>
             <div class="total-row grand"><span>Total</span><span>{{ selected.currency }} {{ fmt(selected.total) }}</span></div>
+          </div>
+
+          <!-- Orden vinculada (solo cotizaciones aceptadas que derivaron en pedido) -->
+          <div v-if="selected.status === 'accepted'" class="detail-section">
+            <p class="section-label">Pedido generado</p>
+            <div v-if="loadingOrder" class="linked-loading">Buscando pedido…</div>
+            <div v-else-if="linkedOrder" class="linked-order-badge">
+              <span class="linked-icon">🛒</span>
+              <span>Orden <code class="order-id">{{ linkedOrder.id.slice(0, 8).toUpperCase() }}</code></span>
+            </div>
+            <p v-else class="linked-none">Aún no se ha generado un pedido desde esta cotización.</p>
           </div>
 
           <!-- Nota del cliente -->
@@ -746,6 +774,17 @@ onMounted(() => { load(); loadStats() })
 }
 .btn-notify:hover:not(:disabled) { background: rgba(16,185,129,.2); }
 .btn-notify:disabled { opacity: .55; cursor: not-allowed; }
+
+/* Linked order badge */
+.linked-loading { font-size: .8rem; color: #5a7298; }
+.linked-none    { font-size: .82rem; color: #5a7298; font-style: italic; margin: 0; }
+.linked-order-badge {
+  display: inline-flex; align-items: center; gap: .5rem;
+  background: rgba(16,185,129,.08); border: 1px solid rgba(16,185,129,.25);
+  border-radius: 8px; padding: .45rem .85rem; font-size: .875rem; font-weight: 600; color: #10b981;
+}
+.linked-icon { font-size: 1rem; }
+.order-id { font-family: monospace; font-size: .8rem; background: rgba(16,185,129,.12); border-radius: 4px; padding: .1rem .35rem; }
 
 /* Transition */
 .slide-enter-active, .slide-leave-active { transition: transform .25s ease; }

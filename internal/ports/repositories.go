@@ -106,6 +106,7 @@ type OrderFilter struct {
 	CustomerID   string
 	Status       string
 	RefundStatus string
+	QuoteID      string
 	From         string
 	To           string
 	Page         int
