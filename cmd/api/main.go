@@ -19,6 +19,7 @@ import (
 	redisclient "github.com/yourorg/shopgo/internal/infrastructure/redis"
 	stripesvc "github.com/yourorg/shopgo/internal/infrastructure/stripe"
 	"github.com/yourorg/shopgo/internal/services"
+	"github.com/yourorg/shopgo/pkg/mailer"
 )
 
 func main() {
@@ -92,6 +93,19 @@ func main() {
 	orderSvc := services.NewOrderService(orderRepo, inventoryRepo, productRepo, branchRepo, redisClient)
 	paySvc := stripesvc.NewPaymentService(cfg.StripeSecretKey, cfg.StripeWebhookSecret, orderRepo)
 
+	// ── Mailer ───────────────────────────────────────────
+	mail := mailer.New(mailer.Config{
+		Host:     cfg.SMTPHost,
+		Port:     cfg.SMTPPort,
+		User:     cfg.SMTPUser,
+		Pass:     cfg.SMTPPass,
+		From:     cfg.EmailFrom,
+		StoreURL: cfg.StoreURL,
+	})
+	if mail.Enabled() {
+		slog.Info("mailer SMTP configurado", "host", cfg.SMTPHost)
+	}
+
 	// ── Notificaciones SSE ───────────────────────────────
 	notifyHub := handlers.NewNotifyHub()
 	go func() {
@@ -118,7 +132,7 @@ func main() {
 		Store:     handlers.NewStoreHandler(storeRepo),
 		Coupon:    handlers.NewCouponHandler(couponRepo),
 		Notify:    handlers.NewNotifyHandler(notifyHub),
-		Quote:     handlers.NewQuoteHandler(quoteRepo, storeRepo),
+		Quote:     handlers.NewQuoteHandler(quoteRepo, storeRepo, mail),
 		PubKey:    pubKey,
 		AdminIPs:  cfg.AdminIPs,
 	}
