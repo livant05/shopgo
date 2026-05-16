@@ -36,7 +36,10 @@ func (m *mockOrders) UpdateStatus(ctx context.Context, id string, s domain.Order
 	}
 	return nil
 }
-func (m *mockOrders) ConfirmPayment(_ context.Context, _, _ string) error { return nil }
+func (m *mockOrders) ConfirmPayment(_ context.Context, _, _ string) error  { return nil }
+func (m *mockOrders) RequestRefund(_ context.Context, _, _ string) error   { return nil }
+func (m *mockOrders) ApproveRefund(_ context.Context, _ string) error      { return nil }
+func (m *mockOrders) RejectRefund(_ context.Context, _ string) error       { return nil }
 
 type mockInventory struct {
 	reserveOK bool
@@ -61,9 +64,15 @@ func (m *mockInventory) Reserve(_ context.Context, _ string, _ []ports.ReserveIt
 	}
 	return "res-1", nil
 }
+func (m *mockInventory) Restore(_ context.Context, _, _ string, _ int, _, _ string) error {
+	return nil
+}
 func (m *mockInventory) Commit(_ context.Context, _ string) error              { return nil }
 func (m *mockInventory) Release(_ context.Context, _ string) error             { m.released = true; return nil }
 func (m *mockInventory) Transfer(_ context.Context, _ ports.TransferCmd) error { return nil }
+func (m *mockInventory) History(_ context.Context, _, _, _, _ string, _, _ int) ([]*domain.InventoryMovement, int, error) {
+	return nil, 0, nil
+}
 
 type mockProducts struct{}
 
@@ -85,8 +94,13 @@ func (m *mockProducts) Update(_ context.Context, p *domain.Product) (*domain.Pro
 }
 func (m *mockProducts) SetActive(_ context.Context, _ string, _ bool) error            { return nil }
 func (m *mockProducts) SetBranchPrice(_ context.Context, _ domain.OverridePrice) error { return nil }
-func (m *mockProducts) BulkUpsert(_ context.Context, _ []*domain.Product) (int, error) { return 0, nil }
-func (m *mockProducts) ListCategories(_ context.Context) ([]domain.Category, error)    { return nil, nil }
+func (m *mockProducts) BulkUpsert(_ context.Context, _ []*domain.Product) (int, error)        { return 0, nil }
+func (m *mockProducts) ListTags(_ context.Context) ([]string, error)                           { return nil, nil }
+func (m *mockProducts) ListCategories(_ context.Context) ([]domain.Category, error)            { return nil, nil }
+func (m *mockProducts) GetCategory(_ context.Context, _ string) (*domain.Category, error)      { return nil, nil }
+func (m *mockProducts) CreateCategory(_ context.Context, c *domain.Category) (*domain.Category, error) { return c, nil }
+func (m *mockProducts) UpdateCategory(_ context.Context, c *domain.Category) (*domain.Category, error) { return c, nil }
+func (m *mockProducts) SetCategoryActive(_ context.Context, _ string, _ bool) error            { return nil }
 
 type mockBranches struct{ active bool }
 
