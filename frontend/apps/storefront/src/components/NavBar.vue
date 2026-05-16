@@ -57,6 +57,7 @@ function logout() {
           📄
           <span v-if="quote.count > 0" class="badge badge-amber">{{ quote.count }}</span>
         </button>
+        <router-link v-if="quote.history.length > 0" to="/my-quotes" class="nav-link" title="Mis cotizaciones">Mis cotizaciones</router-link>
 
         <!-- Cart -->
         <router-link to="/cart" class="cart-btn">
@@ -92,6 +93,7 @@ function logout() {
     <div v-if="menuOpen" class="mobile-menu">
       <router-link to="/catalog" @click="menuOpen = false">Catálogo</router-link>
       <button @click="quote.isOpen = true; menuOpen = false">📄 Cotización ({{ quote.count }})</button>
+      <router-link v-if="quote.history.length > 0" to="/my-quotes" @click="menuOpen = false">📄 Mis cotizaciones</router-link>
       <router-link to="/cart"    @click="menuOpen = false">Carrito ({{ cart.count }})</router-link>
       <template v-if="auth.isAuth">
         <router-link to="/profile" @click="menuOpen = false">Mi perfil</router-link>
