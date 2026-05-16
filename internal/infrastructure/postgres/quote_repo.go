@@ -52,6 +52,19 @@ func (r *QuoteRepo) UpdateStatus(ctx context.Context, id, status, note string) (
 		status, note, now, id))
 }
 
+func (r *QuoteRepo) UpdateItems(ctx context.Context, id string, items []domain.QuoteItem, subtotal, taxAmount, total float64) (*domain.Quote, error) {
+	raw, err := json.Marshal(items)
+	if err != nil {
+		return nil, err
+	}
+	return r.scan(r.db.QueryRow(ctx, `
+		UPDATE quotes
+		SET items = $1, subtotal = $2, tax_amount = $3, total = $4
+		WHERE id = $5
+		RETURNING `+quoteSelect,
+		raw, subtotal, taxAmount, total, id))
+}
+
 func (r *QuoteRepo) List(ctx context.Context, f ports.QuoteFilter) (*ports.Page[domain.Quote], error) {
 	if f.PageSize <= 0 {
 		f.PageSize = 20

@@ -261,6 +261,7 @@ type quoteRepository interface {
 	Create(ctx context.Context, q *domain.Quote) (*domain.Quote, error)
 	GetByID(ctx context.Context, id string) (*domain.Quote, error)
 	UpdateStatus(ctx context.Context, id, status, note string) (*domain.Quote, error)
+	UpdateItems(ctx context.Context, id string, items []domain.QuoteItem, subtotal, taxAmount, total float64) (*domain.Quote, error)
 	List(ctx context.Context, f ports.QuoteFilter) (*ports.Page[domain.Quote], error)
 }
 
@@ -470,6 +471,41 @@ func (h *QuoteHandler) UpdateStatus(c *gin.Context) {
 			"new_status": body.Status,
 		})
 	}()
+	c.JSON(http.StatusOK, q)
+}
+
+func (h *QuoteHandler) UpdateItems(c *gin.Context) {
+	id := c.Param("id")
+	var body struct {
+		Items []domain.QuoteItem `json:"items" binding:"required,min=1"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		apiErr(c, http.StatusBadRequest, "BAD_REQUEST", err.Error())
+		return
+	}
+	existing, err := h.repo.GetByID(c.Request.Context(), id)
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
+	if existing.Status != domain.QuoteStatusPending {
+		apiErr(c, http.StatusUnprocessableEntity, "INVALID_STATE", "solo se pueden editar ítems de cotizaciones pendientes")
+		return
+	}
+	var sub float64
+	for i := range body.Items {
+		if body.Items[i].Qty <= 0 {
+			body.Items[i].Qty = 1
+		}
+		body.Items[i].Subtotal = float64(body.Items[i].Qty) * body.Items[i].UnitPrice
+		sub += body.Items[i].Subtotal
+	}
+	tax := sub * existing.TaxRate
+	q, err := h.repo.UpdateItems(c.Request.Context(), id, body.Items, sub, tax, sub+tax)
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
 	c.JSON(http.StatusOK, q)
 }
 

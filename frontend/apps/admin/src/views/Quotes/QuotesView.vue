@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { api } from '../../api/client'
 
 interface QuoteItem {
@@ -61,6 +61,59 @@ const selected   = ref<Quote | null>(null)
 const noteInput  = ref('')
 const errMsg      = ref('')
 const exporting   = ref(false)
+
+// ── Item editing ──────────────────────────────────────────────
+const editing     = ref(false)
+const editItems   = ref<QuoteItem[]>([])
+const savingItems = ref(false)
+const editError   = ref('')
+
+function startEdit() {
+  if (!selected.value) return
+  editItems.value = JSON.parse(JSON.stringify(selected.value.items))
+  editing.value   = true
+  editError.value = ''
+}
+
+function cancelEdit() {
+  editing.value = false
+  editItems.value = []
+}
+
+function recalcItem(i: number) {
+  const it = editItems.value[i]
+  it.subtotal = parseFloat((it.qty * it.unit_price).toFixed(2))
+}
+
+const editSubtotal = computed(() =>
+  editItems.value.reduce((s, it) => s + it.subtotal, 0)
+)
+const editTaxAmount = computed(() => {
+  const rate = selected.value?.tax_rate ?? 0.07
+  return parseFloat((editSubtotal.value * rate).toFixed(2))
+})
+const editTotal = computed(() =>
+  parseFloat((editSubtotal.value + editTaxAmount.value).toFixed(2))
+)
+
+async function saveItems() {
+  if (!selected.value) return
+  savingItems.value = true
+  editError.value   = ''
+  try {
+    const { data } = await api.put<Quote>(`/admin/quotes/${selected.value.id}/items`, {
+      items: editItems.value,
+    })
+    selected.value = data
+    const idx = quotes.value.findIndex(q => q.id === data.id)
+    if (idx !== -1) quotes.value[idx] = data
+    editing.value = false
+  } catch (e: any) {
+    editError.value = e?.response?.data?.message ?? 'Error al guardar cambios.'
+  } finally {
+    savingItems.value = false
+  }
+}
 
 let searchTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -212,7 +265,7 @@ onMounted(() => load())
             v-for="q in quotes"
             :key="q.id"
             class="tbl-row"
-            @click="selected = q; noteInput = ''; errMsg = ''"
+            @click="selected = q; noteInput = ''; errMsg = ''; editing = false"
           >
             <td class="mono">{{ String(q.quote_number).padStart(5, '0') }}</td>
             <td class="td-main">{{ q.customer_name || '—' }}</td>
@@ -221,7 +274,7 @@ onMounted(() => load())
             <td class="td-amount">{{ q.currency }} {{ fmt(q.total) }}</td>
             <td><span class="badge" :class="q.status">{{ STATUS_LABEL[q.status] ?? q.status }}</span></td>
             <td class="td-muted">{{ fmtDate(q.created_at) }}</td>
-            <td><button class="btn-sm" @click.stop="selected = q; noteInput = ''; errMsg = ''">Ver</button></td>
+            <td><button class="btn-sm" @click.stop="selected = q; noteInput = ''; errMsg = ''; editing = false">Ver</button></td>
           </tr>
         </tbody>
       </table>
@@ -264,8 +317,17 @@ onMounted(() => load())
 
           <!-- Items -->
           <div class="detail-section">
-            <p class="section-label">Productos</p>
-            <table class="items-tbl">
+            <div class="section-header">
+              <p class="section-label">Productos</p>
+              <button
+                v-if="selected.status === 'pending' && !editing"
+                class="btn-edit-items"
+                @click="startEdit"
+              >✏ Ajustar</button>
+            </div>
+
+            <!-- Read-only view -->
+            <table v-if="!editing" class="items-tbl">
               <thead>
                 <tr><th>Producto</th><th>SKU</th><th>Cant.</th><th>Precio</th><th>Subtotal</th></tr>
               </thead>
@@ -279,6 +341,59 @@ onMounted(() => load())
                 </tr>
               </tbody>
             </table>
+
+            <!-- Edit mode -->
+            <template v-else>
+              <table class="items-tbl items-edit">
+                <thead>
+                  <tr><th>Producto</th><th>Cant.</th><th>Precio unit.</th><th>Subtotal</th><th></th></tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(it, i) in editItems" :key="it.product_id">
+                    <td class="td-name">{{ it.name }}<br/><span class="mono td-sku">{{ it.sku }}</span></td>
+                    <td>
+                      <input
+                        v-model.number="editItems[i].qty"
+                        type="number" min="1" step="1"
+                        class="num-input"
+                        @input="recalcItem(i)"
+                      />
+                    </td>
+                    <td>
+                      <input
+                        v-model.number="editItems[i].unit_price"
+                        type="number" min="0" step="0.01"
+                        class="num-input price-input"
+                        @input="recalcItem(i)"
+                      />
+                    </td>
+                    <td class="td-amount">{{ fmt(it.subtotal) }}</td>
+                    <td>
+                      <button
+                        class="btn-rm"
+                        title="Eliminar ítem"
+                        @click="editItems.splice(i, 1)"
+                      >✕</button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <!-- Edit totals preview -->
+              <div class="edit-totals">
+                <span>Subtotal: <b>{{ fmt(editSubtotal) }}</b></span>
+                <span>Impuesto: <b>{{ fmt(editTaxAmount) }}</b></span>
+                <span class="edit-total-grand">Total: <b>{{ fmt(editTotal) }}</b></span>
+              </div>
+
+              <p v-if="editError" class="err-msg">{{ editError }}</p>
+              <div class="edit-actions">
+                <button class="btn-save-items" :disabled="savingItems || editItems.length === 0" @click="saveItems">
+                  {{ savingItems ? 'Guardando…' : '✓ Guardar cambios' }}
+                </button>
+                <button class="btn-cancel-edit" @click="cancelEdit">Cancelar</button>
+              </div>
+            </template>
           </div>
 
           <!-- Totales -->
@@ -451,6 +566,45 @@ onMounted(() => load())
 }
 .btn-reject:hover:not(:disabled) { background: rgba(239,68,68,.2); }
 .btn-accept:disabled, .btn-reject:disabled { opacity: .5; cursor: not-allowed; }
+
+/* Items edit mode */
+.section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: .5rem; }
+.btn-edit-items {
+  font-size: .75rem; padding: .25rem .65rem;
+  background: rgba(251,191,36,.1); border: 1px solid rgba(251,191,36,.25);
+  border-radius: 6px; color: #fbbf24; cursor: pointer;
+}
+.btn-edit-items:hover { background: rgba(251,191,36,.18); }
+.items-edit .td-name { font-size: .82rem; color: #d6dfe8; }
+.items-edit .td-sku  { font-size: .72rem; color: #5a7298; }
+.num-input {
+  width: 60px; padding: .3rem .45rem; background: #0a0f1a;
+  border: 1px solid #253047; border-radius: 6px; color: #d6dfe8;
+  font-size: .82rem; outline: none; text-align: right;
+}
+.num-input:focus { border-color: #38bdf8; }
+.price-input { width: 90px; }
+.btn-rm {
+  background: none; border: none; color: #5a7298; cursor: pointer; font-size: .85rem; padding: .2rem .35rem; border-radius: 4px;
+}
+.btn-rm:hover { color: #f87171; background: rgba(239,68,68,.1); }
+.edit-totals {
+  display: flex; gap: 1rem; justify-content: flex-end;
+  padding: .6rem .5rem; font-size: .82rem; color: #5a7298; flex-wrap: wrap;
+}
+.edit-total-grand { font-weight: 700; color: #38bdf8; }
+.edit-actions { display: flex; gap: .65rem; margin-top: .5rem; }
+.btn-save-items {
+  flex: 1; padding: .5rem; background: rgba(56,189,248,.1); border: 1px solid rgba(56,189,248,.25);
+  border-radius: 8px; color: #38bdf8; font-weight: 700; font-size: .875rem; cursor: pointer;
+}
+.btn-save-items:hover:not(:disabled) { background: rgba(56,189,248,.2); }
+.btn-save-items:disabled { opacity: .45; cursor: not-allowed; }
+.btn-cancel-edit {
+  padding: .5rem 1rem; background: #0a0f1a; border: 1px solid #253047;
+  border-radius: 8px; color: #5a7298; font-size: .875rem; cursor: pointer;
+}
+.btn-cancel-edit:hover { border-color: #38bdf8; color: #d6dfe8; }
 
 .items-tbl { width: 100%; border-collapse: collapse; font-size: .82rem; }
 .items-tbl th { color: #5a7298; text-align: left; padding: .4rem .5rem; border-bottom: 1px solid #1a2540; font-size: .72rem; text-transform: uppercase; }
