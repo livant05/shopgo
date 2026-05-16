@@ -20,102 +20,126 @@
     <div v-if="loading" class="loading">Cargando cotización…</div>
     <div v-else-if="!quote" class="not-found">Cotización no encontrada.</div>
 
-    <div v-else id="quote-doc" class="quote-doc">
-
-      <!-- Header -->
-      <div class="doc-header">
-        <div class="doc-company">
-          <h1 class="company-name">{{ quote.store_name }}</h1>
-          <p v-if="quote.contact_email" class="company-contact">📧 {{ quote.contact_email }}</p>
-          <p v-if="quote.support_phone" class="company-contact">📞 {{ quote.support_phone }}</p>
-        </div>
-        <div class="doc-meta">
-          <div class="quote-badge">COTIZACIÓN</div>
-          <p class="quote-num">N.° {{ String(quote.quote_number).padStart(5, '0') }}</p>
-          <p class="quote-date">Fecha: {{ fmtDate(quote.created_at) }}</p>
-          <p class="quote-valid">Válida 30 días</p>
-        </div>
-      </div>
-
-      <div class="doc-divider" />
-
-      <!-- Customer info -->
-      <div class="doc-customer">
-        <div>
-          <p class="section-label">COTIZADO A</p>
-          <p class="customer-name">{{ quote.customer_name || 'Cliente' }}</p>
-          <p v-if="quote.customer_email" class="customer-detail">{{ quote.customer_email }}</p>
-          <p v-if="quote.customer_phone" class="customer-detail">{{ quote.customer_phone }}</p>
-        </div>
-        <div class="currency-badge">
-          <p class="currency-label">Moneda</p>
-          <p class="currency-val">Balboas / USD (B/.)</p>
-        </div>
-      </div>
-
-      <!-- Items table -->
-      <table class="items-table">
-        <thead>
-          <tr>
-            <th class="col-num">#</th>
-            <th>Descripción</th>
-            <th class="col-sku">SKU</th>
-            <th class="col-num">Cant.</th>
-            <th class="col-price">Precio unit.</th>
-            <th class="col-price">Subtotal</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="(item, i) in quote.items" :key="item.product_id">
-            <td class="col-num">{{ i + 1 }}</td>
-            <td class="item-name-cell">{{ item.name }}</td>
-            <td class="col-sku">{{ item.sku }}</td>
-            <td class="col-num">{{ item.qty }}</td>
-            <td class="col-price">{{ fmt(item.unit_price) }}</td>
-            <td class="col-price">{{ fmt(item.subtotal) }}</td>
-          </tr>
-        </tbody>
-      </table>
-
-      <!-- Totals -->
-      <div class="totals-wrap">
-        <div class="totals-box">
-          <div class="tot-row">
-            <span>Subtotal</span>
-            <span>{{ fmt(quote.subtotal) }}</span>
-          </div>
-          <div class="tot-row itbms">
-            <span>ITBMS ({{ (quote.tax_rate * 100).toFixed(0) }}%)</span>
-            <span>{{ fmt(quote.tax_amount) }}</span>
-          </div>
-          <div class="tot-row grand">
-            <span>TOTAL</span>
-            <span>{{ fmt(quote.total) }}</span>
+    <template v-else>
+      <!-- Status banner (hidden on print) -->
+      <div class="no-print status-banner"
+           :class="bannerClass">
+        <div class="banner-left">
+          <span class="banner-icon">{{ bannerIcon }}</span>
+          <div>
+            <p class="banner-title">{{ bannerTitle }}</p>
+            <p v-if="quote.status_note" class="banner-note">{{ quote.status_note }}</p>
           </div>
         </div>
+        <div class="banner-right">
+          <span v-if="isExpired" class="tag-expired">Vencida</span>
+          <button v-else-if="quote.status === 'accepted'"
+                  class="btn-order" @click="loadIntoCart">
+            Proceder al pago →
+          </button>
+        </div>
       </div>
 
-      <!-- Note -->
-      <div v-if="quote.note" class="note-box">
-        <p class="section-label">NOTAS</p>
-        <p class="note-text">{{ quote.note }}</p>
-      </div>
+      <div id="quote-doc" class="quote-doc">
 
-      <!-- Footer -->
-      <div class="doc-footer">
-        <p>Esta cotización es válida por 30 días a partir de la fecha de emisión.</p>
-        <p>Los precios indicados están en Balboas (B/.) equivalentes a Dólares Americanos (USD) e incluyen el ITBMS del {{ (quote.tax_rate * 100).toFixed(0) }}% según la legislación panameña.</p>
-        <p v-if="quote.contact_email">Para consultas: {{ quote.contact_email }}</p>
-      </div>
+        <!-- Header -->
+        <div class="doc-header">
+          <div class="doc-company">
+            <h1 class="company-name">{{ quote.store_name }}</h1>
+            <p v-if="quote.contact_email" class="company-contact">📧 {{ quote.contact_email }}</p>
+            <p v-if="quote.support_phone" class="company-contact">📞 {{ quote.support_phone }}</p>
+          </div>
+          <div class="doc-meta">
+            <div class="quote-badge">COTIZACIÓN</div>
+            <p class="quote-num">N.° {{ String(quote.quote_number).padStart(5, '0') }}</p>
+            <p class="quote-date">Fecha: {{ fmtDate(quote.created_at) }}</p>
+            <p class="quote-valid">
+              Válida hasta: {{ quote.expires_at ? fmtDate(quote.expires_at) : '30 días' }}
+            </p>
+          </div>
+        </div>
 
-    </div>
+        <div class="doc-divider" />
+
+        <!-- Customer info -->
+        <div class="doc-customer">
+          <div>
+            <p class="section-label">COTIZADO A</p>
+            <p class="customer-name">{{ quote.customer_name || 'Cliente' }}</p>
+            <p v-if="quote.customer_email" class="customer-detail">{{ quote.customer_email }}</p>
+            <p v-if="quote.customer_phone" class="customer-detail">{{ quote.customer_phone }}</p>
+          </div>
+          <div class="currency-badge">
+            <p class="currency-label">Moneda</p>
+            <p class="currency-val">Balboas / USD (B/.)</p>
+          </div>
+        </div>
+
+        <!-- Items table -->
+        <table class="items-table">
+          <thead>
+            <tr>
+              <th class="col-num">#</th>
+              <th>Descripción</th>
+              <th class="col-sku">SKU</th>
+              <th class="col-num">Cant.</th>
+              <th class="col-price">Precio unit.</th>
+              <th class="col-price">Subtotal</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(item, i) in quote.items" :key="item.product_id">
+              <td class="col-num">{{ i + 1 }}</td>
+              <td class="item-name-cell">{{ item.name }}</td>
+              <td class="col-sku">{{ item.sku }}</td>
+              <td class="col-num">{{ item.qty }}</td>
+              <td class="col-price">{{ fmt(item.unit_price) }}</td>
+              <td class="col-price">{{ fmt(item.subtotal) }}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Totals -->
+        <div class="totals-wrap">
+          <div class="totals-box">
+            <div class="tot-row">
+              <span>Subtotal</span>
+              <span>{{ fmt(quote.subtotal) }}</span>
+            </div>
+            <div class="tot-row itbms">
+              <span>ITBMS ({{ (quote.tax_rate * 100).toFixed(0) }}%)</span>
+              <span>{{ fmt(quote.tax_amount) }}</span>
+            </div>
+            <div class="tot-row grand">
+              <span>TOTAL</span>
+              <span>{{ fmt(quote.total) }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Note -->
+        <div v-if="quote.note" class="note-box">
+          <p class="section-label">NOTAS</p>
+          <p class="note-text">{{ quote.note }}</p>
+        </div>
+
+        <!-- Footer -->
+        <div class="doc-footer">
+          <p>Esta cotización es válida hasta el {{ quote.expires_at ? fmtDate(quote.expires_at) : '30 días desde la emisión' }}.</p>
+          <p>Los precios indicados están en Balboas (B/.) equivalentes a Dólares Americanos (USD) e incluyen el ITBMS del {{ (quote.tax_rate * 100).toFixed(0) }}% según la legislación panameña.</p>
+          <p v-if="quote.contact_email">Para consultas: {{ quote.contact_email }}</p>
+        </div>
+
+      </div>
+    </template>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { api } from '../api/client'
+import { useCartStore } from '../stores/cart'
 
 interface QuoteItem {
   product_id: string
@@ -142,17 +166,45 @@ interface Quote {
   customer_email: string
   customer_phone: string
   note: string
+  status: string
+  status_note?: string
+  status_at?: string
   created_at: string
+  expires_at?: string
 }
 
 const route   = useRoute()
+const router  = useRouter()
+const cart    = useCartStore()
 const quote   = ref<Quote | null>(null)
 const loading = ref(true)
 const copied  = ref(false)
 
+const isExpired = computed(() => {
+  if (!quote.value?.expires_at) return false
+  return new Date(quote.value.expires_at) < new Date()
+})
+
+const bannerClass = computed(() => ({
+  'banner-pending':  quote.value?.status === 'pending',
+  'banner-accepted': quote.value?.status === 'accepted',
+  'banner-rejected': quote.value?.status === 'rejected',
+}))
+
+const bannerIcon = computed(() => {
+  if (quote.value?.status === 'accepted') return '✅'
+  if (quote.value?.status === 'rejected') return '✗'
+  return '⏳'
+})
+
+const bannerTitle = computed(() => {
+  if (quote.value?.status === 'accepted') return 'Cotización aceptada'
+  if (quote.value?.status === 'rejected') return 'Cotización no aprobada'
+  return 'Cotización en revisión — te notificaremos cuando esté lista'
+})
+
 const waLink = computed(() => {
   if (!quote.value) return ''
-  const url = encodeURIComponent(window.location.href)
   const text = encodeURIComponent(
     `Hola, te comparto una cotización de ${quote.value.store_name}:\n${window.location.href}`
   )
@@ -179,6 +231,17 @@ async function copyLink() {
   } catch {}
 }
 
+function loadIntoCart() {
+  if (!quote.value) return
+  cart.clear()
+  quote.value.items.forEach(item => {
+    cart.add({ product_id: item.product_id, name: item.name, sku: item.sku, unit_price: item.unit_price, stock: 99 })
+    if (item.qty > 1) cart.qty(item.product_id, item.qty)
+  })
+  cart.isOpen = false
+  router.push('/checkout')
+}
+
 onMounted(async () => {
   try {
     const { data } = await api.get(`/quotes/${route.params.id}`)
@@ -203,6 +266,36 @@ onMounted(async () => {
 .btn-print:hover { background: #1e40af; }
 
 .loading, .not-found { text-align: center; padding: 4rem; color: #94a3b8; }
+
+/* Status banner */
+.status-banner {
+  max-width: 820px; margin: 0 auto 1.25rem;
+  display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .75rem;
+  border-radius: .75rem; padding: 1rem 1.25rem;
+}
+.banner-pending  { background: #fffbeb; border: 1px solid #fcd34d; }
+.banner-accepted { background: #f0fdf4; border: 1px solid #86efac; }
+.banner-rejected { background: #fef2f2; border: 1px solid #fca5a5; }
+
+.banner-left { display: flex; align-items: flex-start; gap: .75rem; }
+.banner-icon { font-size: 1.3rem; line-height: 1; flex-shrink: 0; }
+.banner-title {
+  font-size: .9rem; font-weight: 700; margin: 0 0 .15rem;
+  color: #0f172a;
+}
+.banner-note { font-size: .82rem; color: #64748b; margin: 0; }
+.banner-right { display: flex; align-items: center; gap: .5rem; flex-shrink: 0; }
+
+.tag-expired {
+  font-size: .78rem; font-weight: 700; color: #b91c1c;
+  background: #fee2e2; border-radius: .375rem; padding: .25rem .75rem;
+}
+.btn-order {
+  background: #16a34a; color: #fff; border: none; border-radius: .5rem;
+  padding: .6rem 1.25rem; font-size: .9rem; font-weight: 700; cursor: pointer;
+  transition: background .15s;
+}
+.btn-order:hover { background: #15803d; }
 
 /* Quote document */
 .quote-doc {
@@ -280,5 +373,6 @@ onMounted(async () => {
   .totals-wrap { justify-content: stretch; }
   .totals-box { width: 100%; }
   .col-sku { display: none; }
+  .status-banner { flex-direction: column; align-items: flex-start; }
 }
 </style>
