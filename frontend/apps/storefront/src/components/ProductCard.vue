@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import type { Product } from '../types'
 import { useCartStore } from '../stores/cart'
+import { useQuoteStore } from '../stores/quote'
 import { useRouter } from 'vue-router'
 
 const props = defineProps<{ product: Product }>()
 const cart   = useCartStore()
+const quote  = useQuoteStore()
 const router = useRouter()
 
 function mainImage() {
@@ -28,6 +30,16 @@ function addToCart() {
     stock:      props.product.stock ?? 99,
   })
 }
+
+function addToQuote() {
+  quote.add({
+    product_id: props.product.id,
+    sku:        props.product.sku,
+    name:       props.product.name,
+    unit_price: props.product.branch_price ?? props.product.base_price,
+    image_url:  mainImage(),
+  })
+}
 </script>
 
 <template>
@@ -41,13 +53,18 @@ function addToCart() {
       <p class="sku">{{ product.sku }}</p>
       <h3 class="name">{{ product.name }}</h3>
       <p class="price">{{ price() }}</p>
-      <button
-        class="btn-cart"
-        :disabled="product.stock === 0"
-        @click.stop="addToCart"
-      >
-        {{ product.stock === 0 ? 'Sin stock' : '+ Agregar' }}
-      </button>
+      <div class="btn-row">
+        <button
+          class="btn-cart"
+          :disabled="product.stock === 0"
+          @click.stop="addToCart"
+        >
+          {{ product.stock === 0 ? 'Sin stock' : '🛒' }}
+        </button>
+        <button class="btn-quote" @click.stop="addToQuote" title="Agregar a cotización">
+          📄
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -74,11 +91,17 @@ function addToCart() {
 .sku  { font-size: .7rem; color: #94a3b8; margin: 0; text-transform: uppercase; letter-spacing: .05em; }
 .name { font-size: .95rem; font-weight: 600; color: #1e293b; margin: 0; line-height: 1.3; }
 .price { font-size: 1.05rem; font-weight: 700; color: #2563eb; margin: 0; }
+.btn-row { display: flex; gap: .4rem; margin-top: auto; }
 .btn-cart {
-  margin-top: auto; padding: .5rem; border: none; border-radius: 8px;
+  flex: 1; padding: .5rem; border: none; border-radius: 8px;
   background: #3b82f6; color: #fff; font-weight: 600; font-size: .85rem;
   cursor: pointer; transition: background .15s;
 }
 .btn-cart:hover:not(:disabled) { background: #2563eb; }
 .btn-cart:disabled { background: #e2e8f0; color: #94a3b8; cursor: not-allowed; }
+.btn-quote {
+  padding: .5rem .6rem; border: 1px solid #e2e8f0; border-radius: 8px;
+  background: #f8fafc; font-size: .9rem; cursor: pointer; transition: all .15s; flex-shrink: 0;
+}
+.btn-quote:hover { background: #fef9c3; border-color: #fbbf24; }
 </style>

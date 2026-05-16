@@ -85,6 +85,7 @@ func main() {
 	storeRepo := postgres.NewStoreRepo(pool)
 	couponRepo := postgres.NewCouponRepo(pool)
 	reportRepo := postgres.NewReportRepo(pool)
+	quoteRepo := postgres.NewQuoteRepo(pool)
 
 	// ── Servicios ────────────────────────────────────────
 	authSvc := services.NewAuthService(userRepo, redisClient, privKey, pubKey, cfg.JWTAccessTTL, cfg.JWTRefreshTTL)
@@ -117,6 +118,7 @@ func main() {
 		Store:     handlers.NewStoreHandler(storeRepo),
 		Coupon:    handlers.NewCouponHandler(couponRepo),
 		Notify:    handlers.NewNotifyHandler(notifyHub),
+		Quote:     handlers.NewQuoteHandler(quoteRepo, storeRepo),
 		PubKey:    pubKey,
 		AdminIPs:  cfg.AdminIPs,
 	}

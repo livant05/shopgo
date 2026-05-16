@@ -18,6 +18,7 @@ type Deps struct {
 	Store     *handlers.StoreHandler
 	Coupon    *handlers.CouponHandler
 	Notify    *handlers.NotifyHandler
+	Quote     *handlers.QuoteHandler
 	Health    *handlers.HealthHandler
 	PubKey    any
 	AdminIPs  []string
@@ -45,6 +46,8 @@ func Setup(r *gin.Engine, d *Deps) {
 		pub.GET("/products/:id", d.Product.Get)
 		pub.GET("/tags", d.Product.ListTags)
 		pub.GET("/categories", d.Product.ListCategories)
+		pub.POST("/quotes", d.Quote.Create)
+		pub.GET("/quotes/:id", d.Quote.Get)
 		pub.GET("/branches", d.Branch.List)
 		pub.GET("/store", d.Store.GetConfig)
 

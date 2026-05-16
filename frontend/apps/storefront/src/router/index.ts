@@ -12,6 +12,7 @@ export const router = createRouter({
     { path: '/orders/:id',     name: 'OrderDetail', component: () => import('../views/OrderDetailView.vue'),  meta: { requiresAuth: true } },
     { path: '/orders/:id/ok',  name: 'Success',     component: () => import('../views/SuccessView.vue') },
     { path: '/profile',        name: 'Profile',  component: () => import('../views/ProfileView.vue'),  meta: { requiresAuth: true } },
+    { path: '/quote/:id',      name: 'Quote',    component: () => import('../views/QuoteView.vue') },
     { path: '/login',          name: 'Login',    component: () => import('../views/LoginView.vue') },
     { path: '/register',       name: 'Register', component: () => import('../views/RegisterView.vue') },
     { path: '/:pathMatch(.*)*', redirect: '/' },
