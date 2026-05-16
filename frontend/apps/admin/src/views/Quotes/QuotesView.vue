@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { api } from '../../api/client'
+import QuoteCreateModal from './QuoteCreateModal.vue'
 
 interface QuoteItem {
   product_id: string
@@ -61,6 +62,17 @@ const selected   = ref<Quote | null>(null)
 const noteInput  = ref('')
 const errMsg      = ref('')
 const exporting   = ref(false)
+const showCreate  = ref(false)
+
+function onCreated(q: Quote) {
+  showCreate.value = false
+  quotes.value.unshift(q)
+  total.value++
+  selected.value = q
+  noteInput.value = ''
+  errMsg.value    = ''
+  editing.value   = false
+}
 
 // ── Item editing ──────────────────────────────────────────────
 const editing     = ref(false)
@@ -213,9 +225,12 @@ onMounted(() => load())
         <h1 class="page-title">Cotizaciones</h1>
         <p class="page-sub">{{ total }} cotización{{ total !== 1 ? 'es' : '' }}</p>
       </div>
-      <button class="btn-export" :disabled="exporting" @click="exportCSV()">
-        {{ exporting ? 'Exportando…' : '⬇ Exportar CSV' }}
-      </button>
+      <div class="header-actions">
+        <button class="btn-new" @click="showCreate = true">+ Nueva cotización</button>
+        <button class="btn-export" :disabled="exporting" @click="exportCSV()">
+          {{ exporting ? 'Exportando…' : '⬇ Exportar CSV' }}
+        </button>
+      </div>
     </div>
 
     <!-- Filtros -->
@@ -285,6 +300,9 @@ onMounted(() => load())
         <button @click="page++" :disabled="page >= totalPages">Sig ›</button>
       </div>
     </div>
+
+    <!-- Modal crear cotización -->
+    <QuoteCreateModal v-if="showCreate" @close="showCreate = false" @created="onCreated" />
 
     <!-- Panel detalle -->
     <Transition name="slide">
@@ -456,6 +474,13 @@ onMounted(() => load())
 .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; }
 .page-title { font-size: 1.5rem; font-weight: 700; color: #e2e8f0; margin: 0; }
 .page-sub   { font-size: .875rem; color: #5a7298; margin: .2rem 0 0; }
+.header-actions { display: flex; gap: .65rem; align-items: center; }
+.btn-new {
+  background: rgba(56,189,248,.12); border: 1px solid rgba(56,189,248,.3);
+  color: #38bdf8; border-radius: 8px; padding: .5rem 1.1rem;
+  font-size: .85rem; font-weight: 700; cursor: pointer; white-space: nowrap;
+}
+.btn-new:hover { background: rgba(56,189,248,.22); }
 .btn-export {
   background: rgba(56,189,248,.1); border: 1px solid rgba(56,189,248,.25);
   color: #38bdf8; border-radius: 8px; padding: .5rem 1.1rem;
