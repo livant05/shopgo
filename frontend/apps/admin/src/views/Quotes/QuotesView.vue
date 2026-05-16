@@ -59,7 +59,8 @@ const from       = ref('')
 const to         = ref('')
 const selected   = ref<Quote | null>(null)
 const noteInput  = ref('')
-const errMsg     = ref('')
+const errMsg      = ref('')
+const exporting   = ref(false)
 
 let searchTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -118,6 +119,28 @@ function fmtDate(d: string) {
   return new Date(d).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
+async function exportCSV() {
+  exporting.value = true
+  try {
+    const { data, headers } = await api.get('/admin/quotes/export', {
+      params: {
+        q:      search.value        || undefined,
+        status: statusFilter.value  || undefined,
+        from:   from.value          || undefined,
+        to:     to.value            || undefined,
+      },
+      responseType: 'blob',
+    })
+    const cd       = headers['content-disposition'] ?? ''
+    const filename = cd.match(/filename=([^;]+)/)?.[1] ?? 'cotizaciones.csv'
+    const url  = URL.createObjectURL(new Blob([data], { type: 'text/csv' }))
+    const link = document.createElement('a')
+    link.href = url; link.download = filename; link.click()
+    URL.revokeObjectURL(url)
+  } catch {}
+  exporting.value = false
+}
+
 function storeFrontLink(id: string) {
   const base = import.meta.env.VITE_STOREFRONT_URL ?? 'http://localhost:5177'
   return `${base}/quote/${id}`
@@ -137,6 +160,9 @@ onMounted(() => load())
         <h1 class="page-title">Cotizaciones</h1>
         <p class="page-sub">{{ total }} cotización{{ total !== 1 ? 'es' : '' }}</p>
       </div>
+      <button class="btn-export" :disabled="exporting" @click="exportCSV()">
+        {{ exporting ? 'Exportando…' : '⬇ Exportar CSV' }}
+      </button>
     </div>
 
     <!-- Filtros -->
@@ -315,6 +341,13 @@ onMounted(() => load())
 .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; }
 .page-title { font-size: 1.5rem; font-weight: 700; color: #e2e8f0; margin: 0; }
 .page-sub   { font-size: .875rem; color: #5a7298; margin: .2rem 0 0; }
+.btn-export {
+  background: rgba(56,189,248,.1); border: 1px solid rgba(56,189,248,.25);
+  color: #38bdf8; border-radius: 8px; padding: .5rem 1.1rem;
+  font-size: .85rem; font-weight: 600; cursor: pointer; white-space: nowrap;
+}
+.btn-export:hover:not(:disabled) { background: rgba(56,189,248,.2); }
+.btn-export:disabled { opacity: .5; cursor: not-allowed; }
 
 /* Filtros */
 .filters { display: flex; gap: 1rem; margin-bottom: 1.25rem; flex-wrap: wrap; align-items: center; }

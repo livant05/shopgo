@@ -395,6 +395,50 @@ func (h *QuoteHandler) List(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
+func (h *QuoteHandler) Export(c *gin.Context) {
+	f := ports.QuoteFilter{
+		Search:   c.Query("q"),
+		Status:   c.Query("status"),
+		From:     c.Query("from"),
+		To:       c.Query("to"),
+		Page:     1,
+		PageSize: 5000,
+	}
+	result, err := h.repo.List(c.Request.Context(), f)
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
+	filename := "cotizaciones.csv"
+	if f.From != "" || f.To != "" {
+		filename = fmt.Sprintf("cotizaciones_%s_%s.csv", f.From, f.To)
+	}
+	c.Header("Content-Disposition", "attachment; filename="+filename)
+	c.Header("Content-Type", "text/csv; charset=utf-8")
+	w := csv.NewWriter(c.Writer)
+	_ = w.Write([]string{"N.°", "Cliente", "Correo", "Teléfono", "Ítems", "Subtotal", "ITBMS", "Total", "Moneda", "Estado", "Nota interna", "Fecha", "Vencimiento"})
+	for _, q := range result.Data {
+		exp := ""
+		if q.ExpiresAt != nil {
+			exp = q.ExpiresAt.Format("2006-01-02")
+		}
+		_ = w.Write([]string{
+			fmt.Sprintf("%05d", q.QuoteNumber),
+			q.CustomerName, q.CustomerEmail, q.CustomerPhone,
+			strconv.Itoa(len(q.Items)),
+			fmt.Sprintf("%.2f", q.Subtotal),
+			fmt.Sprintf("%.2f", q.TaxAmount),
+			fmt.Sprintf("%.2f", q.Total),
+			q.Currency,
+			q.Status,
+			q.StatusNote,
+			q.CreatedAt.Format("2006-01-02"),
+			exp,
+		})
+	}
+	w.Flush()
+}
+
 func (h *QuoteHandler) UpdateStatus(c *gin.Context) {
 	var body struct {
 		Status string `json:"status" binding:"required,oneof=pending accepted rejected"`
