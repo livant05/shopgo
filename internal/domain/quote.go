@@ -11,6 +11,12 @@ type QuoteItem struct {
 	Subtotal  float64 `json:"subtotal"`
 }
 
+const (
+	QuoteStatusPending  = "pending"
+	QuoteStatusAccepted = "accepted"
+	QuoteStatusRejected = "rejected"
+)
+
 type Quote struct {
 	ID            string      `json:"id"`
 	QuoteNumber   int         `json:"quote_number"`
@@ -27,6 +33,9 @@ type Quote struct {
 	CustomerEmail string      `json:"customer_email"`
 	CustomerPhone string      `json:"customer_phone"`
 	Note          string      `json:"note"`
+	Status        string      `json:"status"`
+	StatusNote    string      `json:"status_note,omitempty"`
+	StatusAt      *time.Time  `json:"status_at,omitempty"`
 	CreatedAt     time.Time   `json:"created_at"`
 	ExpiresAt     *time.Time  `json:"expires_at,omitempty"`
 }
