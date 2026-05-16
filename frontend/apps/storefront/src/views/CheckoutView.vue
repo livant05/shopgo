@@ -55,6 +55,7 @@ async function placeOrder() {
         country: form.value.country,
       },
       notes: form.value.notes || undefined,
+      quote_id: cart.fromQuoteId || undefined,
     }
     const { data } = await api.post('/orders', payload)
     cart.clear()

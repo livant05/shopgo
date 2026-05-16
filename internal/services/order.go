@@ -25,6 +25,7 @@ type CreateOrderInput struct {
 	ShippingAddress domain.Address
 	Currency        string
 	Notes           string
+	QuoteID         string
 }
 
 type OrderService struct {
@@ -103,6 +104,9 @@ func (s *OrderService) Create(ctx context.Context, in CreateOrderInput) (*domain
 		ShippingAddress: in.ShippingAddress,
 		ReservationID:   reservationID,
 		Notes:           in.Notes,
+	}
+	if in.QuoteID != "" {
+		order.QuoteID = &in.QuoteID
 	}
 
 	created, err := s.orders.Create(ctx, order)

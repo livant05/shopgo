@@ -250,6 +250,7 @@ function reQuote() {
 function loadIntoCart() {
   if (!quote.value) return
   cart.clear()
+  cart.fromQuoteId = quote.value.id
   quote.value.items.forEach(item => {
     cart.add({ product_id: item.product_id, name: item.name, sku: item.sku, unit_price: item.unit_price, stock: 99 })
     if (item.qty > 1) cart.qty(item.product_id, item.qty)

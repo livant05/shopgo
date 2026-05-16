@@ -24,7 +24,7 @@ const orderSelect = `
 	       COALESCE(payment_intent_id,''), COALESCE(coupon_code,''),
 	       COALESCE(reservation_id,''), COALESCE(notes,''),
 	       COALESCE(refund_status,'none'), COALESCE(refund_reason,''), refunded_at,
-	       created_at, updated_at
+	       created_at, updated_at, COALESCE(quote_id,'')
 	FROM orders`
 
 func (r *OrderRepo) GetByID(ctx context.Context, id string) (*domain.Order, error) {
@@ -61,6 +61,11 @@ func (r *OrderRepo) List(ctx context.Context, f ports.OrderFilter) (*ports.Page[
 	if f.RefundStatus != "" {
 		where = append(where, "refund_status=$"+argN(i))
 		args = append(args, f.RefundStatus)
+		i++
+	}
+	if f.QuoteID != "" {
+		where = append(where, "quote_id=$"+argN(i))
+		args = append(args, f.QuoteID)
 		i++
 	}
 
@@ -119,16 +124,16 @@ func (r *OrderRepo) Create(ctx context.Context, o *domain.Order) (*domain.Order,
 	return r.scanOrder(r.db.QueryRow(ctx, `
 		INSERT INTO orders (id, branch_id, customer_id, status, items, subtotal, tax, discount,
 		                    shipping_cost, total, currency, shipping_address, coupon_code,
-		                    reservation_id, notes)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+		                    reservation_id, notes, quote_id)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
 		RETURNING id, branch_id, customer_id, status, items, subtotal, tax, discount,
 		          shipping_cost, total, currency, shipping_address,
 		          COALESCE(payment_intent_id,''), COALESCE(coupon_code,''),
 		          COALESCE(reservation_id,''), COALESCE(notes,''),
 		          COALESCE(refund_status,'none'), COALESCE(refund_reason,''), refunded_at,
-		          created_at, updated_at`,
+		          created_at, updated_at, COALESCE(quote_id,'')`,
 		o.ID, o.BranchID, o.CustomerID, o.Status, items, o.Subtotal, o.Tax, o.Discount,
-		o.ShippingCost, o.Total, o.Currency, addr, coupon, o.ReservationID, notes))
+		o.ShippingCost, o.Total, o.Currency, addr, coupon, o.ReservationID, notes, o.QuoteID))
 }
 
 func (r *OrderRepo) UpdateStatus(ctx context.Context, id string, status domain.OrderStatus) error {
@@ -192,13 +197,14 @@ func (r *OrderRepo) RejectRefund(ctx context.Context, orderID string) error {
 func (r *OrderRepo) scanOrder(row rowScanner) (*domain.Order, error) {
 	var o domain.Order
 	var items, addr []byte
+	var quoteID string
 	if err := row.Scan(
 		&o.ID, &o.BranchID, &o.CustomerID, &o.Status,
 		&items, &o.Subtotal, &o.Tax, &o.Discount, &o.ShippingCost, &o.Total,
 		&o.Currency, &addr,
 		&o.PaymentIntentID, &o.CouponCode, &o.ReservationID, &o.Notes,
 		&o.RefundStatus, &o.RefundReason, &o.RefundedAt,
-		&o.CreatedAt, &o.UpdatedAt,
+		&o.CreatedAt, &o.UpdatedAt, &quoteID,
 	); err != nil {
 		if err == pgx.ErrNoRows {
 			return nil, ports.ErrNotFound
@@ -209,6 +215,9 @@ func (r *OrderRepo) scanOrder(row rowScanner) (*domain.Order, error) {
 	json.Unmarshal(addr, &o.ShippingAddress)
 	if o.Items == nil {
 		o.Items = []domain.OrderItem{}
+	}
+	if quoteID != "" {
+		o.QuoteID = &quoteID
 	}
 	return &o, nil
 }
